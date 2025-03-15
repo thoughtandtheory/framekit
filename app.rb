@@ -2,19 +2,12 @@ require 'sinatra'
 require 'mini_magick'
 require 'json'
 require 'tempfile'
+require 'zip'
 
 set :public_folder, File.dirname(__FILE__) + '/public'
 
-get '/' do
-  erb :index
-end
-
-post '/frame' do
-  begin
-    # Get the uploaded file
-    image_file = params[:image][:tempfile]
-    original_filename = params[:image][:filename]
-    
+helpers do
+  def process_image(image_file, original_filename)
     # Create a temporary file for the result
     temp_file = Tempfile.new(['framed', '.jpg'])
     
@@ -54,14 +47,64 @@ post '/frame' do
     # Save to temp file
     result.write temp_file.path
     
-    # Set response headers
-    content_type 'image/jpeg'
-    attachment "framed_#{original_filename.sub(/\.[^.]+\z/, '')}.jpg"
+    # Return the temp file and the framed filename
+    [temp_file, "framed_#{original_filename.sub(/\.[^.]+\z/, '')}.jpg"]
+  end
+end
+
+get '/' do
+  erb :index
+end
+
+post '/frame' do
+  begin
+    # Check if files were uploaded
+    unless params[:images] && params[:images].any?
+      status 400
+      return "No images uploaded"
+    end
+
+    # Create a temporary directory for processed images
+    temp_dir = Dir.mktmpdir
+    processed_files = []
+    errors = []
+
+    # Process each uploaded file
+    params[:images].each do |upload|
+      begin
+        temp_file, framed_filename = process_image(upload[:tempfile], upload[:filename])
+        
+        # Move the processed file to temp directory
+        FileUtils.mv(temp_file.path, File.join(temp_dir, framed_filename))
+        processed_files << framed_filename
+      rescue => e
+        errors << "Error processing #{upload[:filename]}: #{e.message}"
+      end
+    end
+
+    if errors.any?
+      status 500
+      return "Errors occurred: #{errors.join(', ')}"
+    end
+
+    # Create a ZIP file containing all processed images
+    zip_file = Tempfile.new(['framed_images', '.zip'])
     
-    # Send the file
-    send_file temp_file.path
+    Zip::File.open(zip_file.path, Zip::File::CREATE) do |zipfile|
+      processed_files.each do |filename|
+        zipfile.add(filename, File.join(temp_dir, filename))
+      end
+    end
+
+    # Clean up the temporary directory
+    FileUtils.remove_entry temp_dir
+
+    # Send the ZIP file
+    content_type 'application/zip'
+    attachment "framed_images_#{Time.now.strftime('%Y%m%d_%H%M%S')}.zip"
+    send_file zip_file.path
   rescue => e
     status 500
-    "Error processing image: #{e.message}"
+    "Error processing images: #{e.message}"
   end
 end

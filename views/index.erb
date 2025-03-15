@@ -62,6 +62,11 @@
       background-color: #0056b3;
     }
 
+    .submit-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
     .info {
       margin-top: 2rem;
       padding: 1rem;
@@ -69,6 +74,37 @@
       border-radius: 4px;
       font-size: 0.9rem;
       color: #666;
+    }
+
+    .selected-files {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .selected-files ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .selected-files li {
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .selected-files li:last-child {
+      border-bottom: none;
+    }
+
+    .file-count {
+      color: #007bff;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
     }
   </style>
 </head>
@@ -78,18 +114,51 @@
   <div class="upload-container">
     <form action="/frame" method="post" enctype="multipart/form-data" class="upload-form">
       <div class="field">
-        <label for="image">Choose an image to frame</label>
-        <input type="file" name="image" id="image" accept="image/*" required class="file-input">
+        <label for="images">Choose images to frame</label>
+        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="file-input" onchange="updateFileList()">
+      </div>
+
+      <div class="selected-files" id="fileList" style="display: none;">
+        <div class="file-count" id="fileCount"></div>
+        <ul id="fileListUl"></ul>
       </div>
 
       <div class="actions">
-        <button type="submit" class="submit-button">Frame Image</button>
+        <button type="submit" class="submit-button" id="submitBtn" disabled>Frame Images</button>
       </div>
     </form>
   </div>
 
   <div class="info">
-    <p>Your image will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels.</p>
+    <p>Upload multiple images and they will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels. All processed images will be available for download.</p>
   </div>
+
+  <script>
+    function updateFileList() {
+      const input = document.getElementById('images');
+      const fileList = document.getElementById('fileList');
+      const fileListUl = document.getElementById('fileListUl');
+      const fileCount = document.getElementById('fileCount');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      fileListUl.innerHTML = '';
+      
+      if (input.files.length > 0) {
+        fileList.style.display = 'block';
+        fileCount.textContent = `${input.files.length} file(s) selected`;
+        
+        Array.from(input.files).forEach(file => {
+          const li = document.createElement('li');
+          li.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+          fileListUl.appendChild(li);
+        });
+        
+        submitBtn.disabled = false;
+      } else {
+        fileList.style.display = 'none';
+        submitBtn.disabled = true;
+      }
+    }
+  </script>
 </body>
 </html>
