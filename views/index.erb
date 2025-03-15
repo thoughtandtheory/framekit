@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Framer</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .upload-container {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .upload-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .field label {
+      font-weight: 500;
+      color: #444;
+    }
+
+    .file-input {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .submit-button {
+      background-color: #007bff;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s;
+    }
+
+    .submit-button:hover {
+      background-color: #0056b3;
+    }
+
+    .info {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #e9ecef;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Image Framer</h1>
+
+  <div class="upload-container">
+    <form action="/frame" method="post" enctype="multipart/form-data" class="upload-form">
+      <div class="field">
+        <label for="image">Choose an image to frame</label>
+        <input type="file" name="image" id="image" accept="image/*" required class="file-input">
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="submit-button">Frame Image</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="info">
+    <p>Your image will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels.</p>
+  </div>
+</body>
+</html>

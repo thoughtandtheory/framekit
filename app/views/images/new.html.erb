@@ -1,0 +1,57 @@
+<h1>Frame Your Image</h1>
+
+<div class="upload-container">
+  <%= form_with(model: @image, local: true, class: "upload-form") do |form| %>
+    <div class="field">
+      <%= form.label :file, "Choose an image to frame" %>
+      <%= form.file_field :file, accept: 'image/*', class: "file-input" %>
+    </div>
+
+    <div class="actions">
+      <%= form.submit "Frame Image", class: "submit-button" %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.upload-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.submit-button {
+  background-color: #007bff;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+</style>
