@@ -3,6 +3,7 @@ require 'mini_magick'
 require 'json'
 require 'tempfile'
 require 'zip'
+require 'fileutils'
 
 set :public_folder, File.dirname(__FILE__) + '/public'
 
