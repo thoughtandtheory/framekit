@@ -131,6 +131,8 @@ post '/frame' do
       return "No images uploaded"
     end
 
+    content_type :json
+
     # Create a temporary directory for processed images
     temp_dir = Dir.mktmpdir
     processed_files = []
@@ -174,26 +176,39 @@ post '/frame' do
       return "Errors occurred: #{errors.join(', ')}"
     end
 
-    # Create a ZIP file containing all processed images
-    timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
-    zip_filename = "framed_images_#{timestamp}.zip"
-    
     # Ensure public/downloads directory exists
     FileUtils.mkdir_p('public/downloads')
-    zip_path = File.join('public/downloads', zip_filename)
+    timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
     
-    # Create the ZIP file in the downloads directory
-    Zip::File.open(zip_path, Zip::File::CREATE) do |zipfile|
-      processed_files.each do |filename|
-        zipfile.add(filename, File.join(temp_dir, filename))
+    if processed_files.length == 1
+      # For single image, just move it to downloads directory
+      filename = processed_files.first
+      download_path = File.join('public/downloads', filename)
+      FileUtils.cp(File.join(temp_dir, filename), download_path)
+      download_url = "/downloads/#{filename}"
+    else
+      # For multiple images, create a ZIP file
+      zip_filename = "framed_images_#{timestamp}.zip"
+      zip_path = File.join('public/downloads', zip_filename)
+      
+      # Create the ZIP file in the downloads directory
+      Zip::File.open(zip_path, Zip::File::CREATE) do |zipfile|
+        processed_files.each do |filename|
+          zipfile.add(filename, File.join(temp_dir, filename))
+        end
       end
+      download_url = "/downloads/#{zip_filename}"
     end
 
     # Clean up the temporary directory
     FileUtils.remove_entry temp_dir
 
-    # Return the download URL
-    "/downloads/#{zip_filename}"
+    # Return the download URL, count, and filename
+    {
+      url: download_url,
+      count: processed_files.length,
+      filename: processed_files.length == 1 ? processed_files.first : "framed_images_#{timestamp}.zip"
+    }.to_json
   rescue => e
     status 500
     "Error processing images: #{e.message}"

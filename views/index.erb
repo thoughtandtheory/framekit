@@ -280,6 +280,30 @@
       resetForm();
     });
 
+    // Add download handler
+    document.getElementById('downloadLink').addEventListener('click', function(e) {
+      e.preventDefault();
+      const url = this.getAttribute('data-url');
+      const filename = this.getAttribute('data-filename');
+      
+      fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+        })
+        .catch(error => {
+          console.error('Download error:', error);
+          alert('Error downloading the file. Please try again.');
+        });
+    });
+
     document.querySelector('form').addEventListener('submit', function(e) {
       e.preventDefault();
       const startTime = new Date();
@@ -294,8 +318,8 @@
         method: 'POST',
         body: new FormData(this)
       })
-      .then(response => response.text())
-      .then(downloadUrl => {
+      .then(response => response.json())
+      .then(data => {
         // Hide spinner
         spinner.style.display = 'none';
         
@@ -303,9 +327,15 @@
         const processingTime = ((new Date() - startTime) / 1000).toFixed(1);
         
         // Update success screen
-        document.getElementById('processedCount').textContent = fileCount;
+        document.getElementById('processedCount').textContent = data.count;
         document.getElementById('processingTime').textContent = processingTime;
-        document.getElementById('downloadLink').href = downloadUrl;
+        
+        // Update download link text and data
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.setAttribute('data-url', data.url);
+        downloadLink.setAttribute('data-filename', data.filename);
+        downloadLink.textContent = data.count === 1 ? 'Download Framed Image' : 'Download Framed Images (ZIP)';
+        
         document.getElementById('successScreen').classList.add('show');
       })
       .catch(error => {
