@@ -24,6 +24,7 @@ GEM
     rackup (2.2.1)
       rack (>= 3)
     ruby2_keywords (0.0.5)
+    rubyzip (2.4.1)
     sinatra (4.1.1)
       logger (>= 1.6.0)
       mustermann (~> 3.0)
@@ -41,6 +42,7 @@ DEPENDENCIES
   mini_magick
   puma
   rackup
+  rubyzip (~> 2.4)
   sinatra
 
 RUBY VERSION

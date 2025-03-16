@@ -106,6 +106,86 @@
       font-weight: 500;
       margin-bottom: 0.5rem;
     }
+    
+    /* Success screen styles */
+    .success-screen {
+      display: none;
+      margin-top: 2rem;
+      padding: 2rem;
+      background: #f0fff0;
+      border: 1px solid #4CAF50;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .success-screen.show {
+      display: block;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    .success-screen h2 {
+      color: #4CAF50;
+      margin-bottom: 1rem;
+    }
+
+    .success-details {
+      margin: 1rem 0;
+      color: #666;
+    }
+
+    .download-link {
+      display: inline-block;
+      background: #4CAF50;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background-color 0.2s;
+    }
+
+    .download-link:hover {
+      background: #45a049;
+    }
+
+    .reset-button {
+      display: inline-block;
+      background: #6c757d;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background-color 0.2s;
+      margin-left: 1rem;
+      cursor: pointer;
+      border: none;
+      font: inherit;
+    }
+
+    .reset-button:hover {
+      background: #5a6268;
+    }
+
+    /* Processing spinner */
+    .processing-spinner {
+      display: none;
+      margin: 2rem auto;
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -133,6 +213,20 @@
     <p>Upload multiple images and they will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels. All processed images will be available for download.</p>
   </div>
 
+  <div class="processing-spinner" id="processingSpinner"></div>
+
+  <div class="success-screen" id="successScreen">
+    <h2>Images Processed Successfully! 🎉</h2>
+    <div class="success-details">
+      <p><span id="processedCount">0</span> images have been processed and framed</p>
+      <p>Processing time: <span id="processingTime">0</span> seconds</p>
+    </div>
+    <div class="action-buttons">
+      <a href="#" class="download-link" id="downloadLink">Download Framed Images</a>
+      <button class="reset-button" id="resetButton">Process More Images</button>
+    </div>
+  </div>
+
   <script>
     function updateFileList() {
       const input = document.getElementById('images');
@@ -140,8 +234,10 @@
       const fileListUl = document.getElementById('fileListUl');
       const fileCount = document.getElementById('fileCount');
       const submitBtn = document.getElementById('submitBtn');
+      const successScreen = document.getElementById('successScreen');
       
       fileListUl.innerHTML = '';
+      successScreen.classList.remove('show');
       
       if (input.files.length > 0) {
         fileList.style.display = 'block';
@@ -159,6 +255,65 @@
         submitBtn.disabled = true;
       }
     }
+
+    function resetForm() {
+      // Clear file input
+      document.getElementById('images').value = '';
+      
+      // Hide file list and success screen
+      document.getElementById('fileList').style.display = 'none';
+      document.getElementById('successScreen').classList.remove('show');
+      
+      // Reset file count
+      document.getElementById('fileCount').textContent = '';
+      
+      // Disable submit button
+      document.getElementById('submitBtn').disabled = true;
+      
+      // Clear selected files list
+      document.getElementById('fileListUl').innerHTML = '';
+    }
+
+    // Add click handler for reset button
+    document.getElementById('resetButton').addEventListener('click', function(e) {
+      e.preventDefault();
+      resetForm();
+    });
+
+    document.querySelector('form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const startTime = new Date();
+      const spinner = document.getElementById('processingSpinner');
+      const fileCount = document.getElementById('images').files.length;
+      
+      // Show spinner
+      spinner.style.display = 'block';
+      
+      // Submit form data
+      fetch('/frame', {
+        method: 'POST',
+        body: new FormData(this)
+      })
+      .then(response => response.text())
+      .then(downloadUrl => {
+        // Hide spinner
+        spinner.style.display = 'none';
+        
+        // Calculate processing time
+        const processingTime = ((new Date() - startTime) / 1000).toFixed(1);
+        
+        // Update success screen
+        document.getElementById('processedCount').textContent = fileCount;
+        document.getElementById('processingTime').textContent = processingTime;
+        document.getElementById('downloadLink').href = downloadUrl;
+        document.getElementById('successScreen').classList.add('show');
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        spinner.style.display = 'none';
+        alert('An error occurred while processing the images. Please try again.');
+      });
+    });
   </script>
 </body>
 </html>
