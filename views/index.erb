@@ -108,6 +108,62 @@
     }
     
     /* Success screen styles */
+    .preview-grid {
+      display: none;
+      margin-top: 2rem;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    .preview-grid.show {
+      display: grid;
+    }
+
+    .preview-item {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .preview-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .preview-item.selected {
+      box-shadow: 0 0 0 3px #4CAF50;
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 200px;
+      object-fit: contain;
+      background: #f8f9fa;
+    }
+
+    .preview-item .filename {
+      padding: 0.5rem;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+      border-top: 1px solid #eee;
+    }
+
+    .preview-actions {
+      display: none;
+      margin-top: 2rem;
+      text-align: center;
+      gap: 1rem;
+    }
+
+    .preview-actions.show {
+      display: flex;
+      justify-content: center;
+    }
+
     .success-screen {
       display: none;
       margin-top: 2rem;
@@ -215,15 +271,22 @@
 
   <div class="processing-spinner" id="processingSpinner"></div>
 
+  <div class="preview-grid" id="previewGrid"></div>
+
+  <div class="preview-actions" id="previewActions">
+    <button class="submit-button" id="exportBtn" disabled>Export Selected</button>
+    <button class="reset-button" id="resetButton">Start Over</button>
+  </div>
+
   <div class="success-screen" id="successScreen">
-    <h2>Images Processed Successfully! 🎉</h2>
+    <h2>Images Exported Successfully! 🎉</h2>
     <div class="success-details">
-      <p><span id="processedCount">0</span> images have been processed and framed</p>
+      <p><span id="processedCount">0</span> images have been exported</p>
       <p>Processing time: <span id="processingTime">0</span> seconds</p>
     </div>
     <div class="action-buttons">
       <a href="#" class="download-link" id="downloadLink">Download Framed Images</a>
-      <button class="reset-button" id="resetButton">Process More Images</button>
+      <button class="reset-button" id="newExportButton">Export More</button>
     </div>
   </div>
 
@@ -281,6 +344,60 @@
     });
 
     // Add download handler
+    // Export button handler
+    document.getElementById('exportBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      const startTime = new Date();
+      const spinner = document.getElementById('processingSpinner');
+      
+      // Show spinner
+      spinner.style.display = 'block';
+      
+      // Submit selected IDs
+      fetch('/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selectedIds: Array.from(selectedPreviews)
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Hide spinner
+        spinner.style.display = 'none';
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // Calculate processing time
+        const processingTime = ((new Date() - startTime) / 1000).toFixed(1);
+        
+        // Update success screen
+        document.getElementById('processedCount').textContent = data.count;
+        document.getElementById('processingTime').textContent = processingTime;
+        
+        // Set up download link
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.setAttribute('data-url', data.url);
+        downloadLink.setAttribute('data-filename', data.filename);
+        downloadLink.textContent = data.count === 1 ? 'Download Framed Image' : 'Download Framed Images (ZIP)';
+        
+        // Hide preview grid and show success screen
+        document.getElementById('previewGrid').classList.remove('show');
+        document.getElementById('previewActions').classList.remove('show');
+        document.getElementById('successScreen').classList.add('show');
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        spinner.style.display = 'none';
+        alert('An error occurred while exporting the images. Please try again.');
+      });
+    });
+
+    // Download link handler
     document.getElementById('downloadLink').addEventListener('click', function(e) {
       e.preventDefault();
       const url = this.getAttribute('data-url');
@@ -304,17 +421,74 @@
         });
     });
 
+    // Reset and New Export button handlers
+    document.getElementById('resetButton').addEventListener('click', function(e) {
+      e.preventDefault();
+      resetUI();
+      document.querySelector('.upload-form').style.display = 'block';
+    });
+
+    document.getElementById('newExportButton').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('successScreen').classList.remove('show');
+      document.getElementById('previewGrid').classList.add('show');
+      document.getElementById('previewActions').classList.add('show');
+    });
+
+    // Preview management
+    let selectedPreviews = new Set();
+
+    function updateExportButton() {
+      const exportBtn = document.getElementById('exportBtn');
+      exportBtn.disabled = selectedPreviews.size === 0;
+      exportBtn.textContent = `Export ${selectedPreviews.size} Selected`;
+    }
+
+    function togglePreviewSelection(previewId, element) {
+      if (selectedPreviews.has(previewId)) {
+        selectedPreviews.delete(previewId);
+        element.classList.remove('selected');
+      } else {
+        selectedPreviews.add(previewId);
+        element.classList.add('selected');
+      }
+      updateExportButton();
+    }
+
+    function createPreviewItem(preview) {
+      const div = document.createElement('div');
+      div.className = 'preview-item';
+      div.innerHTML = `
+        <img src="${preview.url}" alt="Preview">
+        <div class="filename">${preview.filename}</div>
+      `;
+      div.addEventListener('click', () => togglePreviewSelection(preview.id, div));
+      return div;
+    }
+
+    function resetUI() {
+      document.getElementById('images').value = '';
+      document.getElementById('fileList').style.display = 'none';
+      document.getElementById('previewGrid').classList.remove('show');
+      document.getElementById('previewActions').classList.remove('show');
+      document.getElementById('successScreen').classList.remove('show');
+      document.getElementById('fileCount').textContent = '';
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('fileListUl').innerHTML = '';
+      selectedPreviews.clear();
+      updateExportButton();
+    }
+
     document.querySelector('form').addEventListener('submit', function(e) {
       e.preventDefault();
       const startTime = new Date();
       const spinner = document.getElementById('processingSpinner');
-      const fileCount = document.getElementById('images').files.length;
       
       // Show spinner
       spinner.style.display = 'block';
       
-      // Submit form data
-      fetch('/frame', {
+      // Submit form data for preview generation
+      fetch('/preview', {
         method: 'POST',
         body: new FormData(this)
       })
@@ -323,20 +497,25 @@
         // Hide spinner
         spinner.style.display = 'none';
         
-        // Calculate processing time
-        const processingTime = ((new Date() - startTime) / 1000).toFixed(1);
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        // Clear and show preview grid
+        const previewGrid = document.getElementById('previewGrid');
+        previewGrid.innerHTML = '';
         
-        // Update success screen
-        document.getElementById('processedCount').textContent = data.count;
-        document.getElementById('processingTime').textContent = processingTime;
+        // Add preview items
+        data.previews.forEach(preview => {
+          previewGrid.appendChild(createPreviewItem(preview));
+        });
         
-        // Update download link text and data
-        const downloadLink = document.getElementById('downloadLink');
-        downloadLink.setAttribute('data-url', data.url);
-        downloadLink.setAttribute('data-filename', data.filename);
-        downloadLink.textContent = data.count === 1 ? 'Download Framed Image' : 'Download Framed Images (ZIP)';
+        // Show preview grid and actions
+        previewGrid.classList.add('show');
+        document.getElementById('previewActions').classList.add('show');
         
-        document.getElementById('successScreen').classList.add('show');
+        // Hide the form
+        document.querySelector('.upload-form').style.display = 'none';
       })
       .catch(error => {
         console.error('Error:', error);
