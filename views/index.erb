@@ -126,7 +126,6 @@
       background: #fff;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       transition: transform 0.2s;
-      cursor: pointer;
     }
 
     .preview-item:hover {
@@ -142,14 +141,52 @@
       height: 200px;
       object-fit: contain;
       background: #f8f9fa;
+      cursor: pointer;
+    }
+
+    .preview-item .preview-info {
+      padding: 0.75rem;
+      border-top: 1px solid #eee;
     }
 
     .preview-item .filename {
-      padding: 0.5rem;
       font-size: 0.9rem;
       color: #666;
-      text-align: center;
-      border-top: 1px solid #eee;
+      margin-bottom: 0.5rem;
+    }
+
+    .preview-item .gravity-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .preview-item select {
+      padding: 0.25rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #444;
+      background: #fff;
+      width: 100%;
+    }
+
+    .preview-item .loading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      display: none;
+    }
+
+    .preview-item .loading.show {
+      display: flex;
     }
 
     .preview-actions {
@@ -248,7 +285,7 @@
   <h1>Image Framer</h1>
 
   <div class="upload-container">
-    <form action="/frame" method="post" enctype="multipart/form-data" class="upload-form">
+    <form action="/preview" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
       <div class="field">
         <label for="images">Choose images to frame</label>
         <input type="file" name="images[]" id="images" accept="image/*" required multiple class="file-input" onchange="updateFileList()">
@@ -291,6 +328,10 @@
   </div>
 
   <script>
+    // Track selected previews and their gravity settings
+    const selectedPreviews = new Set();
+    const previewGravitySettings = new Map();
+
     function updateFileList() {
       const input = document.getElementById('images');
       const fileList = document.getElementById('fileList');
@@ -320,8 +361,14 @@
     }
 
     function resetForm() {
-      // Clear file input
+      // Show upload form and info
+      document.querySelector('.upload-container').style.display = 'block';
+      document.querySelector('.info').style.display = 'block';
+      
+      // Clear file input and selections
       document.getElementById('images').value = '';
+      selectedPreviews.clear();
+      previewGravitySettings.clear();
       
       // Hide file list and success screen
       document.getElementById('fileList').style.display = 'none';
@@ -335,6 +382,98 @@
       
       // Clear selected files list
       document.getElementById('fileListUl').innerHTML = '';
+      
+      // Clear preview grid
+      document.getElementById('previewGrid').innerHTML = '';
+      document.getElementById('previewGrid').classList.remove('show');
+      document.getElementById('previewActions').classList.remove('show');
+    }
+
+    function createPreviewItem(preview) {
+      const previewItem = document.createElement('div');
+      previewItem.className = 'preview-item';
+      previewItem.dataset.id = preview.id;
+      
+      previewItem.innerHTML = `
+        <img src="${preview.url}" alt="${preview.filename}">
+        <div class="preview-info">
+          <div class="filename">${preview.filename}</div>
+          <div class="gravity-control">
+            <label>Position:</label>
+            <select onchange="handleGravityChange(this, '${preview.id}')">
+              <option value="center" ${preview.gravity === 'center' ? 'selected' : ''}>Center</option>
+              <option value="top" ${preview.gravity === 'top' ? 'selected' : ''}>Top</option>
+              <option value="bottom" ${preview.gravity === 'bottom' ? 'selected' : ''}>Bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="loading">
+          <div class="processing-spinner"></div>
+        </div>
+      `;
+
+      // Add click handler for selection
+      previewItem.querySelector('img').addEventListener('click', () => {
+        previewItem.classList.toggle('selected');
+        const id = preview.id;
+        if (selectedPreviews.has(id)) {
+          selectedPreviews.delete(id);
+        } else {
+          selectedPreviews.add(id);
+        }
+        updateExportButton();
+      });
+
+      // Store initial gravity setting
+      previewGravitySettings.set(preview.id, preview.gravity || 'center');
+      
+      return previewItem;
+    }
+
+    async function handleGravityChange(select, previewId) {
+      const previewItem = select.closest('.preview-item');
+      const loading = previewItem.querySelector('.loading');
+      const gravity = select.value;
+      const previousValue = previewGravitySettings.get(previewId);
+
+      try {
+        loading.classList.add('show');
+        const response = await fetch('/reprocess', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ previewId, gravity })
+        });
+
+        if (!response.ok) {
+          throw new Error('Server error: ' + response.status);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Server returned non-JSON response');
+        }
+
+        const data = await response.json();
+        const img = previewItem.querySelector('img');
+        img.src = `${data.url}?t=${Date.now()}`;
+        previewGravitySettings.set(previewId, gravity);
+      } catch (error) {
+        console.error('Error:', error);
+        // Reset select to previous value
+        select.value = previousValue;
+        alert('Failed to change image position. Please try again.');
+      } finally {
+        loading.classList.remove('show');
+      }
+    }
+
+    function updateExportButton() {
+      const exportBtn = document.getElementById('exportBtn');
+      exportBtn.disabled = selectedPreviews.size === 0;
+      exportBtn.textContent = `Export ${selectedPreviews.size} ${selectedPreviews.size === 1 ? 'Image' : 'Images'}`;
     }
 
     // Add click handler for reset button
@@ -343,185 +482,124 @@
       resetForm();
     });
 
-    // Add download handler
     // Export button handler
-    document.getElementById('exportBtn').addEventListener('click', function(e) {
+    // Form submission handler
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const spinner = document.getElementById('processingSpinner');
+      const submitBtn = document.getElementById('submitBtn');
+      const originalButtonText = submitBtn.textContent;
+      
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+        spinner.style.display = 'block';
+        
+        const response = await fetch('/preview', {
+          method: 'POST',
+          body: new FormData(this)
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to process images');
+        }
+        
+        // Clear the form and file list
+        this.reset();
+        updateFileList();
+        
+        // Hide upload form and info
+        document.querySelector('.upload-container').style.display = 'none';
+        document.querySelector('.info').style.display = 'none';
+        
+        // Show previews
+        const previewGrid = document.getElementById('previewGrid');
+        previewGrid.innerHTML = '';
+        previewGrid.classList.add('show');
+        
+        data.previews.forEach(preview => {
+          previewGrid.appendChild(createPreviewItem(preview));
+        });
+        
+        // Show preview actions
+        document.getElementById('previewActions').classList.add('show');
+        updateExportButton();
+        
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalButtonText;
+        spinner.style.display = 'none';
+      }
+    });
+
+    // Export button handler
+    document.getElementById('exportBtn').addEventListener('click', async function(e) {
       e.preventDefault();
       const startTime = new Date();
       const spinner = document.getElementById('processingSpinner');
+      const exportBtn = document.getElementById('exportBtn');
+      const originalButtonText = exportBtn.textContent;
       
-      // Show spinner
-      spinner.style.display = 'block';
-      
-      // Submit selected IDs
-      fetch('/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          selectedIds: Array.from(selectedPreviews)
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        // Hide spinner
-        spinner.style.display = 'none';
+      try {
+        // Show spinner and disable button
+        spinner.style.display = 'block';
+        exportBtn.disabled = true;
+        exportBtn.textContent = 'Exporting...';
         
-        if (data.error) {
-          throw new Error(data.error);
+        // Submit selected IDs and their fit methods
+        const response = await fetch('/export', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            selectedIds: Array.from(selectedPreviews)
+          })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to export images');
         }
         
-        // Calculate processing time
-        const processingTime = ((new Date() - startTime) / 1000).toFixed(1);
-        
         // Update success screen
-        document.getElementById('processedCount').textContent = data.count;
-        document.getElementById('processingTime').textContent = processingTime;
+        const endTime = new Date();
+        const processingTime = ((endTime - startTime) / 1000).toFixed(1);
         
-        // Set up download link
-        const downloadLink = document.getElementById('downloadLink');
-        downloadLink.setAttribute('data-url', data.url);
-        downloadLink.setAttribute('data-filename', data.filename);
-        downloadLink.textContent = data.count === 1 ? 'Download Framed Image' : 'Download Framed Images (ZIP)';
+        document.getElementById('processedCount').textContent = selectedPreviews.size;
+        document.getElementById('processingTime').textContent = processingTime;
+        document.getElementById('downloadLink').href = data.url;
+        document.getElementById('downloadLink').download = data.filename;
         
         // Hide preview grid and show success screen
         document.getElementById('previewGrid').classList.remove('show');
         document.getElementById('previewActions').classList.remove('show');
         document.getElementById('successScreen').classList.add('show');
-      })
-      .catch(error => {
-        console.error('Error:', error);
+        
+      } catch (error) {
+        alert(error.message);
+      } finally {
         spinner.style.display = 'none';
-        alert('An error occurred while exporting the images. Please try again.');
-      });
+        exportBtn.disabled = selectedPreviews.size === 0;
+        exportBtn.textContent = originalButtonText;
+      }
     });
 
-    // Download link handler
+    // Download link handler - direct download using native browser download
     document.getElementById('downloadLink').addEventListener('click', function(e) {
-      e.preventDefault();
-      const url = this.getAttribute('data-url');
-      const filename = this.getAttribute('data-filename');
-      
-      fetch(url)
-        .then(response => response.blob())
-        .then(blob => {
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          window.URL.revokeObjectURL(downloadUrl);
-        })
-        .catch(error => {
-          console.error('Download error:', error);
-          alert('Error downloading the file. Please try again.');
-        });
+      // Let the native download attribute handle it
+      return true;
     });
 
-    // Reset and New Export button handlers
-    document.getElementById('resetButton').addEventListener('click', function(e) {
-      e.preventDefault();
-      resetUI();
-      document.querySelector('.upload-form').style.display = 'block';
-    });
-
+    // New export button handler
     document.getElementById('newExportButton').addEventListener('click', function(e) {
       e.preventDefault();
       document.getElementById('successScreen').classList.remove('show');
       document.getElementById('previewGrid').classList.add('show');
       document.getElementById('previewActions').classList.add('show');
-    });
-
-    // Preview management
-    let selectedPreviews = new Set();
-
-    function updateExportButton() {
-      const exportBtn = document.getElementById('exportBtn');
-      exportBtn.disabled = selectedPreviews.size === 0;
-      exportBtn.textContent = `Export ${selectedPreviews.size} Selected`;
-    }
-
-    function togglePreviewSelection(previewId, element) {
-      if (selectedPreviews.has(previewId)) {
-        selectedPreviews.delete(previewId);
-        element.classList.remove('selected');
-      } else {
-        selectedPreviews.add(previewId);
-        element.classList.add('selected');
-      }
-      updateExportButton();
-    }
-
-    function createPreviewItem(preview) {
-      const div = document.createElement('div');
-      div.className = 'preview-item';
-      div.innerHTML = `
-        <img src="${preview.url}" alt="Preview">
-        <div class="filename">${preview.filename}</div>
-      `;
-      div.addEventListener('click', () => togglePreviewSelection(preview.id, div));
-      return div;
-    }
-
-    function resetUI() {
-      document.getElementById('images').value = '';
-      document.getElementById('fileList').style.display = 'none';
-      document.getElementById('previewGrid').classList.remove('show');
-      document.getElementById('previewActions').classList.remove('show');
-      document.getElementById('successScreen').classList.remove('show');
-      document.getElementById('fileCount').textContent = '';
-      document.getElementById('submitBtn').disabled = true;
-      document.getElementById('fileListUl').innerHTML = '';
-      selectedPreviews.clear();
-      updateExportButton();
-    }
-
-    document.querySelector('form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const startTime = new Date();
-      const spinner = document.getElementById('processingSpinner');
-      
-      // Show spinner
-      spinner.style.display = 'block';
-      
-      // Submit form data for preview generation
-      fetch('/preview', {
-        method: 'POST',
-        body: new FormData(this)
-      })
-      .then(response => response.json())
-      .then(data => {
-        // Hide spinner
-        spinner.style.display = 'none';
-        
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        // Clear and show preview grid
-        const previewGrid = document.getElementById('previewGrid');
-        previewGrid.innerHTML = '';
-        
-        // Add preview items
-        data.previews.forEach(preview => {
-          previewGrid.appendChild(createPreviewItem(preview));
-        });
-        
-        // Show preview grid and actions
-        previewGrid.classList.add('show');
-        document.getElementById('previewActions').classList.add('show');
-        
-        // Hide the form
-        document.querySelector('.upload-form').style.display = 'none';
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        spinner.style.display = 'none';
-        alert('An error occurred while processing the images. Please try again.');
-      });
     });
   </script>
 </body>

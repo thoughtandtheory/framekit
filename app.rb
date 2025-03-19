@@ -16,14 +16,15 @@ helpers do
     SecureRandom.uuid
   end
 
-  def save_preview(preview_id, file_path, original_filename)
+  def save_preview(preview_id, file_path, original_path, original_filename, gravity)
     $previews[preview_id] = {
       path: file_path,
-      filename: "framed_#{original_filename.sub(/\.[^.]+\z/, '')}.jpg",
-      selected: false
+      original_path: original_path,
+      filename: original_filename,
+      gravity: gravity
     }
   end
-  def process_image(image_file, original_filename)
+  def process_image(image_file, original_filename, gravity = 'center')
     # Create a temporary file for the result
     temp_file = Tempfile.new(['framed', '.jpg'])
     
@@ -34,7 +35,11 @@ helpers do
       # Calculate dimensions to fill the frame while maintaining aspect ratio
       target_width = 3440  # 3840 - (200 * 2)
       target_height = 1760 # 2160 - (200 * 2)
+      
+      # Calculate scale to fill the frame (cover) while maintaining aspect ratio
       scale = [target_width.to_f / image.width, target_height.to_f / image.height].max
+      
+      # Calculate dimensions that maintain aspect ratio and ensure coverage
       new_width = (image.width * scale).to_i
       new_height = (image.height * scale).to_i
       
@@ -43,30 +48,41 @@ helpers do
         # Input image
         convert << image.path
 
-        # Pre-resize the input image to target dimensions
+        # Set up initial parameters for cropping
+        convert.background('white')
+        
+        # Apply gravity for initial crop
+        case gravity
+        when 'top'
+          convert.gravity('north')
+        when 'bottom'
+          convert.gravity('south')
+        else
+          convert.gravity('center')
+        end
+
+        # Resize larger than needed to ensure we have enough image to crop from
         convert.resize("#{new_width}x#{new_height}^")
         
-        # Center and extend to target dimensions
-        convert.background('white')
-        convert.gravity('center')
+        # Crop to exact dimensions using the specified gravity
         convert.extent("#{target_width}x#{target_height}")
+        
+        # Create the frame with the cropped image centered
+        convert.gravity('center')
+        convert.background('white')
+        convert.extent('3840x2160')
         
         # Add inner shadow
         convert.shave('2x2')
         convert.border('2')
         convert.bordercolor('rgba(0,0,0,0.1)')
         
-        # Create final frame
-        convert.background('white')
-        convert.gravity('center')
-        convert.extent('3840x2160')
-        
-        # Optimize output
+        # Optimize JPEG output
         convert.colorspace('sRGB')
-        convert.quality('95')
-        convert.strip # Remove metadata to reduce file size
-        convert.interlace('Plane') # Progressive JPG
-        convert.sampling_factor('4:2:0') # Standard chroma subsampling
+        convert.quality('95')       # High quality for frame images
+        convert.strip               # Remove metadata
+        convert.interlace('Plane')  # Progressive loading
+        convert.sampling_factor('4:2:0')  # Standard chroma subsampling
         
         # Output as high-quality JPEG
         convert << temp_file.path
@@ -99,6 +115,13 @@ post '/preview' do
       return "No images uploaded"
     end
 
+    # Validate gravity
+    gravity = params[:gravity] || 'center'
+    unless ['top', 'center', 'bottom'].include?(gravity)
+      status 400
+      return { error: "Invalid gravity: #{gravity}" }.to_json
+    end
+
     content_type :json
     previews = []
 
@@ -110,8 +133,13 @@ post '/preview' do
         temp_upload.write(upload[:tempfile].read)
         temp_upload.rewind
 
-        # Process the image
-        temp_file, framed_filename = process_image(temp_upload, upload[:filename])
+        # Save original file for reprocessing
+        original_path = "public/originals/#{File.basename(temp_upload.path)}"
+        FileUtils.mkdir_p('public/originals')
+        FileUtils.cp(temp_upload.path, original_path)
+
+        # Process the image with specified gravity
+        temp_file, framed_filename = process_image(File.new(original_path), upload[:filename], gravity)
         
         # Generate preview ID and save preview info
         preview_id = generate_preview_id
@@ -119,12 +147,14 @@ post '/preview' do
         FileUtils.mkdir_p('public/previews')
         FileUtils.mv(temp_file.path, preview_path)
         
-        save_preview(preview_id, preview_path, upload[:filename])
+        # Save preview with gravity setting for reprocessing
+        save_preview(preview_id, preview_path, original_path, upload[:filename], gravity)
         
         previews << {
           id: preview_id,
           url: "/previews/#{preview_id}.jpg",
-          filename: upload[:filename]
+          filename: upload[:filename],
+          gravity: gravity
         }
 
         temp_upload.close
@@ -139,6 +169,48 @@ post '/preview' do
   rescue => e
     status 500
     { error: "Error processing images: #{e.message}" }.to_json
+  end
+end
+
+post '/reprocess' do
+  content_type :json
+  begin
+    data = JSON.parse(request.body.read)
+    preview_id = data['previewId']
+    gravity = data['gravity'] || 'center'
+
+    # Validate parameters
+    unless preview_id && $previews[preview_id]
+      status 400
+      return { error: "Invalid preview ID" }.to_json
+    end
+
+    unless ['top', 'center', 'bottom'].include?(gravity)
+      status 400
+      return { error: "Invalid gravity: #{gravity}" }.to_json
+    end
+
+    preview = $previews[preview_id]
+    original_file = File.new(preview[:original_path])
+
+    # Process the image with new gravity setting
+    temp_file, _ = process_image(original_file, preview[:filename], gravity)
+    preview_path = "public/previews/#{preview_id}.jpg"
+    FileUtils.mv(temp_file.path, preview_path)
+
+    # Update preview info
+    $previews[preview_id][:gravity] = gravity
+
+    {
+      url: "/previews/#{preview_id}.jpg",
+      gravity: gravity
+    }.to_json
+  rescue JSON::ParserError
+    status 400
+    { error: "Invalid JSON in request" }.to_json
+  rescue => e
+    status 500
+    { error: "Error reprocessing image: #{e.message}" }.to_json
   end
 end
 
@@ -161,17 +233,21 @@ post '/export' do
       return { error: "No valid images found" }.to_json
     end
 
-    # Ensure downloads directory exists
+    # Clean up old downloads
+    FileUtils.rm_rf('public/downloads')
     FileUtils.mkdir_p('public/downloads')
     timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
 
     if valid_previews.length == 1
       # For single image, just copy it to downloads
       preview = valid_previews.first
-      download_filename = preview[:filename]
+      # Ensure .jpg extension
+      base_filename = preview[:filename].sub(/\.[^.]+\z/, '')
+      download_filename = "framed_#{base_filename}.jpg"
       download_path = File.join('public/downloads', download_filename)
       FileUtils.cp(preview[:path], download_path)
       
+      # Return JSON response for single file
       {
         url: "/downloads/#{download_filename}",
         filename: download_filename,
@@ -182,17 +258,46 @@ post '/export' do
       zip_filename = "framed_images_#{timestamp}.zip"
       zip_path = File.join('public/downloads', zip_filename)
 
-      Zip::File.open(zip_path, Zip::File::CREATE) do |zipfile|
-        valid_previews.each do |preview|
-          zipfile.add(preview[:filename], preview[:path])
+      # Create ZIP file with all images
+      begin
+        # Ensure all source files exist before creating ZIP
+        missing_files = valid_previews.reject { |preview| File.exist?(preview[:path]) }
+        if missing_files.any?
+          status 500
+          return { error: "Some source images are missing" }.to_json
         end
-      end
 
-      {
-        url: "/downloads/#{zip_filename}",
-        filename: zip_filename,
-        count: valid_previews.length
-      }.to_json
+        # Create ZIP with proper error handling
+        Zip::File.open(zip_path, Zip::File::CREATE) do |zipfile|
+          valid_previews.each do |preview|
+            base_filename = preview[:filename].sub(/\.[^.]+\z/, '')
+            source_path = preview[:path]
+            
+            # Verify source file again before adding to ZIP
+            unless File.exist?(source_path) && File.size(source_path) > 0
+              raise "Source file missing or empty: #{source_path}"
+            end
+            
+            zipfile.add("framed_#{base_filename}.jpg", source_path)
+          end
+        end
+
+        # Verify ZIP was created successfully
+        unless File.exist?(zip_path) && File.size(zip_path) > 0
+          raise "ZIP file creation failed or file is empty"
+        end
+
+        # Return JSON response for ZIP file
+        {
+          url: "/downloads/#{zip_filename}",
+          filename: zip_filename,
+          count: valid_previews.length
+        }.to_json
+      rescue => e
+        puts "ZIP creation error: #{e.message}"
+        status 500
+        return { error: "Error creating ZIP file: #{e.message}" }.to_json
+      end
     end
   rescue => e
     status 500
