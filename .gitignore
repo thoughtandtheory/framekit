@@ -27,6 +27,12 @@
 !/tmp/storage/.keep
 /public/assets
 
+# Generated previews and downloads
+/public/previews/*
+!/public/previews/.keep
+/public/downloads/*
+!/public/downloads/.keep
+
 # Test and coverage files
 /coverage/
 /spec/reports/
@@ -57,3 +63,17 @@ build-iPhoneSimulator/
 
 # RuboCop
 .rubocop-https?--*
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
