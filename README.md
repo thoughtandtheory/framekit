@@ -1,14 +1,22 @@
 # FrameKit
 
-FrameKit is a web application that allows users to upload images and automatically adds a beautiful white frame with a subtle inner shadow effect, creating an elegant presentation-ready framed image.
+FrameKit is a web application that allows users to create beautifully framed images with precise control over image positioning. Whether you need a single framed image or a side-by-side presentation, FrameKit offers an elegant solution with a subtle inner shadow effect.
 
 ## Features
 
+### Single Frame
 - Upload any image file
 - Automatically resizes and centers the image
+- Configurable image positioning (top, bottom, left, right, corners)
 - Adds a white frame with configurable dimensions
 - Creates a subtle inner shadow effect for depth
-- Downloads the framed image instantly
+
+### Double Frame
+- Upload two images for side-by-side presentation
+- Independent position control for each image
+- Synchronized frame dimensions
+- Perfect for before/after comparisons
+- Maintains consistent spacing and alignment
 
 ## Requirements
 
@@ -48,9 +56,21 @@ FrameKit is a web application that allows users to upload images and automatical
 
 ## Usage
 
-1. Click the "Choose File" button to select an image
-2. Click "Upload" to process the image
-3. The framed image will automatically download
+### Single Frame
+1. Click "Single Frame" in the navigation
+2. Click "Choose File" to select an image
+3. Click "Upload" to process the image
+4. Adjust image position using the gravity controls
+5. Click "Export" to download the framed image
+
+### Double Frame
+1. Click "Double Frame" in the navigation
+2. Select two images using the upload fields
+3. Click "Upload" to process both images
+4. Adjust each image's position independently:
+   - Left image controls are under the left side
+   - Right image controls are under the right side
+5. Click "Export" to download the combined frame
 
 ## Technical Details
 
@@ -60,10 +80,15 @@ FrameKit uses:
 - ImageMagick for the underlying image manipulations
 
 The framing process:
-1. Resizes the image while maintaining aspect ratio
-2. Centers it within a white border
-3. Adds a subtle inner shadow effect using multiple techniques
-4. Outputs a high-quality JPEG
+1. Validates and processes uploaded images
+2. Resizes while maintaining aspect ratio
+3. Positions images according to gravity settings
+4. Adds white frame and inner shadow effects
+5. Optimizes output with:
+   - Progressive JPEG loading
+   - Standard chroma subsampling
+   - High quality (95) compression
+   - Minimal metadata
 
 ## Contributing
 

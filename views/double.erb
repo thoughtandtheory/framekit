@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Image Framer</title>
+  <title>Image Framer - Double Frame</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -128,124 +128,97 @@
       border-bottom: none;
     }
 
-    .file-count {
-      color: #007bff;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-    
-    /* Success screen styles */
     .preview-grid {
       display: none;
       margin-top: 2rem;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     }
 
     .preview-grid.show {
-      display: grid;
+      display: block;
     }
 
     .preview-item {
-      position: relative;
+      background: white;
       border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
+      padding: 1rem;
+      margin-bottom: 2rem;
     }
 
-    .preview-item:hover {
-      transform: translateY(-2px);
+    .preview-frame {
+      margin-bottom: 1rem;
     }
 
-    .preview-item.selected {
-      box-shadow: 0 0 0 3px #4CAF50;
-    }
-
-    .preview-item img {
+    .preview-frame img {
       width: 100%;
-      height: 200px;
-      object-fit: contain;
-      background: #f8f9fa;
-      cursor: pointer;
+      height: auto;
+      border-radius: 4px;
+      border: 1px solid #eee;
     }
 
-    .preview-item .preview-info {
-      padding: 0.75rem;
-      border-top: 1px solid #eee;
-    }
-
-    .preview-item .filename {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 0.5rem;
-    }
-
-    .preview-item .gravity-control {
+    .gravity-controls {
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
+      gap: 2rem;
+      margin-top: 1rem;
     }
 
-    .preview-item select {
-      padding: 0.25rem;
+    .gravity-control {
+      flex: 1;
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 4px;
+    }
+
+    .gravity-control label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .gravity-control select {
+      width: 100%;
+      padding: 0.5rem;
       border: 1px solid #ddd;
       border-radius: 4px;
-      font-size: 0.85rem;
-      color: #444;
-      background: #fff;
-      width: 100%;
-    }
-
-    .preview-item .loading {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      display: none;
-    }
-
-    .preview-item .loading.show {
-      display: flex;
+      background-color: white;
+      font-size: 0.9rem;
     }
 
     .preview-actions {
       display: none;
       margin-top: 2rem;
-      text-align: center;
       gap: 1rem;
+      justify-content: center;
     }
 
     .preview-actions.show {
       display: flex;
-      justify-content: center;
+    }
+
+    .reset-button {
+      background-color: #6c757d;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s;
+    }
+
+    .reset-button:hover {
+      background-color: #5a6268;
     }
 
     .success-screen {
       display: none;
-      margin-top: 2rem;
-      padding: 2rem;
-      background: #f0fff0;
-      border: 1px solid #4CAF50;
-      border-radius: 8px;
       text-align: center;
+      margin-top: 2rem;
     }
 
     .success-screen.show {
       display: block;
-      animation: fadeIn 0.5s ease-in;
-    }
-
-    .success-screen h2 {
-      color: #4CAF50;
-      margin-bottom: 1rem;
     }
 
     .success-details {
@@ -253,46 +226,36 @@
       color: #666;
     }
 
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
     .download-link {
-      display: inline-block;
-      background: #4CAF50;
+      background-color: #28a745;
       color: white;
       padding: 0.75rem 1.5rem;
+      border: none;
       border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
       text-decoration: none;
       transition: background-color 0.2s;
     }
 
     .download-link:hover {
-      background: #45a049;
+      background-color: #218838;
     }
 
-    .reset-button {
-      display: inline-block;
-      background: #6c757d;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      transition: background-color 0.2s;
-      margin-left: 1rem;
-      cursor: pointer;
-      border: none;
-      font: inherit;
-    }
-
-    .reset-button:hover {
-      background: #5a6268;
-    }
-
-    /* Processing spinner */
     .processing-spinner {
       display: none;
       margin: 2rem auto;
       width: 50px;
       height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #4CAF50;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -302,9 +265,32 @@
       100% { transform: rotate(360deg); }
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    .loading {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 0.5rem;
+    }
+
+    .loading.show {
+      display: inline-block;
+    }
+
+    .double-frame-preview {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .frame-half {
+      flex: 1;
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 4px;
     }
   </style>
 </head>
@@ -312,15 +298,25 @@
   <h1>Image Framer</h1>
 
   <nav class="nav">
-    <a href="/" class="nav-link active" id="singleFrameLink">Single Frame</a>
-    <a href="/double" class="nav-link" id="doubleFrameLink">Double Frame</a>
+    <a href="/" class="nav-link" id="singleFrameLink">Single Frame</a>
+    <a href="/double" class="nav-link active" id="doubleFrameLink">Double Frame</a>
   </nav>
 
   <div class="upload-container">
-    <form action="/preview" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
-      <div class="field">
-        <label for="images">Choose images to frame</label>
-        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="file-input" onchange="updateFileList()">
+    <form action="/preview-double" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+      <div class="double-frame-preview">
+        <div class="frame-half">
+          <div class="field">
+            <label for="leftImage">Left Image</label>
+            <input type="file" name="images[]" id="leftImage" accept="image/*" required class="file-input" onchange="updateFileList()">
+          </div>
+        </div>
+        <div class="frame-half">
+          <div class="field">
+            <label for="rightImage">Right Image</label>
+            <input type="file" name="images[]" id="rightImage" accept="image/*" required class="file-input" onchange="updateFileList()">
+          </div>
+        </div>
       </div>
 
       <div class="selected-files" id="fileList" style="display: none;">
@@ -335,7 +331,7 @@
   </div>
 
   <div class="info">
-    <p>Upload multiple images and they will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels. All processed images will be available for download.</p>
+    <p>Upload two images and they will be framed side by side with a white border of 200px on all sides and between images, resulting in a final size of 3840x2160 pixels. The framed image will be available for download.</p>
   </div>
 
   <div class="processing-spinner" id="processingSpinner"></div>
@@ -343,49 +339,44 @@
   <div class="preview-grid" id="previewGrid"></div>
 
   <div class="preview-actions" id="previewActions">
-    <button class="submit-button" id="exportBtn" disabled>Export Selected</button>
+    <button class="submit-button" id="exportBtn" disabled>Export Frame</button>
     <button class="reset-button" id="resetButton">Start Over</button>
   </div>
 
   <div class="success-screen" id="successScreen">
-    <h2>Images Exported Successfully! 🎉</h2>
+    <h2>Frame Exported Successfully! 🎉</h2>
     <div class="success-details">
-      <p><span id="processedCount">0</span> images have been exported</p>
+      <p>Your double frame has been created</p>
       <p>Processing time: <span id="processingTime">0</span> seconds</p>
     </div>
     <div class="action-buttons">
-      <a href="#" class="download-link" id="downloadLink">Download Framed Images</a>
-      <button class="reset-button" id="newExportButton">Export More</button>
+      <button class="reset-button" id="newExportButton">Create Another</button>
     </div>
   </div>
 
   <script>
-    // Track selected previews and their gravity settings
-    const selectedPreviews = new Set();
-    const previewGravitySettings = new Map();
-
     function updateFileList() {
-      const input = document.getElementById('images');
+      const leftInput = document.getElementById('leftImage');
+      const rightInput = document.getElementById('rightImage');
       const fileList = document.getElementById('fileList');
       const fileListUl = document.getElementById('fileListUl');
       const fileCount = document.getElementById('fileCount');
       const submitBtn = document.getElementById('submitBtn');
-      const successScreen = document.getElementById('successScreen');
-      
       fileListUl.innerHTML = '';
-      successScreen.classList.remove('show');
       
-      if (input.files.length > 0) {
+      const files = [leftInput.files[0], rightInput.files[0]].filter(Boolean);
+      
+      if (files.length > 0) {
         fileList.style.display = 'block';
-        fileCount.textContent = `${input.files.length} file(s) selected`;
+        fileCount.textContent = `${files.length} of 2 images selected`;
         
-        Array.from(input.files).forEach(file => {
+        files.forEach(file => {
           const li = document.createElement('li');
           li.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
           fileListUl.appendChild(li);
         });
         
-        submitBtn.disabled = false;
+        submitBtn.disabled = files.length !== 2;
       } else {
         fileList.style.display = 'none';
         submitBtn.disabled = true;
@@ -397,14 +388,12 @@
       document.querySelector('.upload-container').style.display = 'block';
       document.querySelector('.info').style.display = 'block';
       
-      // Clear file input and selections
-      document.getElementById('images').value = '';
-      selectedPreviews.clear();
-      previewGravitySettings.clear();
+      // Clear file inputs
+      document.getElementById('leftImage').value = '';
+      document.getElementById('rightImage').value = '';
       
-      // Hide file list and success screen
+      // Hide file list
       document.getElementById('fileList').style.display = 'none';
-      document.getElementById('successScreen').classList.remove('show');
       
       // Reset file count
       document.getElementById('fileCount').textContent = '';
@@ -421,80 +410,39 @@
       document.getElementById('previewActions').classList.remove('show');
     }
 
-    function createPreviewItem(preview) {
-      const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
-      previewItem.dataset.id = preview.id;
-      
-      previewItem.innerHTML = `
-        <img src="${preview.url}" alt="${preview.filename}">
-        <div class="preview-info">
-          <div class="filename">${preview.filename}</div>
-          <div class="gravity-control">
-            <label>Position:</label>
-            <select onchange="handleGravityChange(this, '${preview.id}')">
-              <option value="center" ${preview.gravity === 'center' ? 'selected' : ''}>Center</option>
-              <option value="top" ${preview.gravity === 'top' ? 'selected' : ''}>Top</option>
-              <option value="bottom" ${preview.gravity === 'bottom' ? 'selected' : ''}>Bottom</option>
-            </select>
-          </div>
-        </div>
-        <div class="loading">
-          <div class="processing-spinner"></div>
-        </div>
-      `;
-
-      // Add click handler for selection
-      previewItem.querySelector('img').addEventListener('click', () => {
-        previewItem.classList.toggle('selected');
-        const id = preview.id;
-        if (selectedPreviews.has(id)) {
-          selectedPreviews.delete(id);
-        } else {
-          selectedPreviews.add(id);
-        }
-        updateExportButton();
-      });
-
-      // Store initial gravity setting
-      previewGravitySettings.set(preview.id, preview.gravity || 'center');
-      
-      return previewItem;
-    }
-
-    async function handleGravityChange(select, previewId) {
+    async function handleGravityChange(select, previewId, position) {
       const previewItem = select.closest('.preview-item');
       const loading = previewItem.querySelector('.loading');
       const gravity = select.value;
-      const previousValue = previewGravitySettings.get(previewId);
-
+      const previousValue = previewGravitySettings.get(`${previewId}-${position}`);
+      
       try {
         loading.classList.add('show');
-        const response = await fetch('/reprocess', {
+        
+        const response = await fetch('/reprocess-double', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ previewId, gravity })
+          body: JSON.stringify({ previewId, position, gravity })
         });
-
+        
         if (!response.ok) {
-          throw new Error('Server error: ' + response.status);
+          throw new Error('Failed to update image position');
         }
-
+        
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           throw new Error('Server returned non-JSON response');
         }
 
         const data = await response.json();
-        const img = previewItem.querySelector('img');
+        const img = document.querySelector(`img[data-preview-id="${previewId}"]`);
         img.src = `${data.url}?t=${Date.now()}`;
-        previewGravitySettings.set(previewId, gravity);
+        previewGravitySettings.set(`${previewId}-${position}`, gravity);
       } catch (error) {
         console.error('Error:', error);
-        // Reset select to previous value
         select.value = previousValue;
         alert('Failed to change image position. Please try again.');
       } finally {
@@ -502,19 +450,51 @@
       }
     }
 
-    function updateExportButton() {
-      const exportBtn = document.getElementById('exportBtn');
-      exportBtn.disabled = selectedPreviews.size === 0;
-      exportBtn.textContent = `Export ${selectedPreviews.size} ${selectedPreviews.size === 1 ? 'Image' : 'Images'}`;
+    function createPreviewItem(preview) {
+      const previewItem = document.createElement('div');
+      previewItem.className = 'preview-item';
+      previewItem.dataset.id = preview.id;
+      
+      previewItem.innerHTML = `
+        <div class="preview-frame">
+          <img src="${preview.url}" alt="Double Frame Preview" data-preview-id="${preview.id}">
+        </div>
+        <div class="gravity-controls">
+          <div class="gravity-control">
+            <label>Left Image Position:</label>
+            <select onchange="handleGravityChange(this, '${preview.id}', 'left')">
+              <option value="center" ${preview.leftGravity === 'center' ? 'selected' : ''}>Center</option>
+              <option value="north" ${preview.leftGravity === 'north' ? 'selected' : ''}>Top</option>
+              <option value="south" ${preview.leftGravity === 'south' ? 'selected' : ''}>Bottom</option>
+              <option value="west" ${preview.leftGravity === 'west' ? 'selected' : ''}>Left</option>
+              <option value="east" ${preview.leftGravity === 'east' ? 'selected' : ''}>Right</option>
+              <option value="northwest" ${preview.leftGravity === 'northwest' ? 'selected' : ''}>Top Left</option>
+              <option value="northeast" ${preview.leftGravity === 'northeast' ? 'selected' : ''}>Top Right</option>
+              <option value="southwest" ${preview.leftGravity === 'southwest' ? 'selected' : ''}>Bottom Left</option>
+              <option value="southeast" ${preview.leftGravity === 'southeast' ? 'selected' : ''}>Bottom Right</option>
+            </select>
+          </div>
+          <div class="gravity-control">
+            <label>Right Image Position:</label>
+            <select onchange="handleGravityChange(this, '${preview.id}', 'right')">
+              <option value="center" ${preview.rightGravity === 'center' ? 'selected' : ''}>Center</option>
+              <option value="north" ${preview.rightGravity === 'north' ? 'selected' : ''}>Top</option>
+              <option value="south" ${preview.rightGravity === 'south' ? 'selected' : ''}>Bottom</option>
+              <option value="west" ${preview.rightGravity === 'west' ? 'selected' : ''}>Left</option>
+              <option value="east" ${preview.rightGravity === 'east' ? 'selected' : ''}>Right</option>
+              <option value="northwest" ${preview.rightGravity === 'northwest' ? 'selected' : ''}>Top Left</option>
+              <option value="northeast" ${preview.rightGravity === 'northeast' ? 'selected' : ''}>Top Right</option>
+              <option value="southwest" ${preview.rightGravity === 'southwest' ? 'selected' : ''}>Bottom Left</option>
+              <option value="southeast" ${preview.rightGravity === 'southeast' ? 'selected' : ''}>Bottom Right</option>
+            </select>
+          </div>
+        </div>
+        <div class="loading"></div>
+      `;
+      
+      return previewItem;
     }
 
-    // Add click handler for reset button
-    document.getElementById('resetButton').addEventListener('click', function(e) {
-      e.preventDefault();
-      resetForm();
-    });
-
-    // Export button handler
     // Form submission handler
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -527,7 +507,7 @@
         submitBtn.textContent = 'Processing...';
         spinner.style.display = 'block';
         
-        const response = await fetch('/preview', {
+        const response = await fetch('/preview-double', {
           method: 'POST',
           body: new FormData(this)
         });
@@ -537,26 +517,20 @@
           throw new Error(data.error || 'Failed to process images');
         }
         
-        // Clear the form and file list
+        // Clear the form and hide upload container
         this.reset();
-        updateFileList();
-        
-        // Hide upload form and info
         document.querySelector('.upload-container').style.display = 'none';
         document.querySelector('.info').style.display = 'none';
         
-        // Show previews
+        // Show preview
         const previewGrid = document.getElementById('previewGrid');
         previewGrid.innerHTML = '';
         previewGrid.classList.add('show');
-        
-        data.previews.forEach(preview => {
-          previewGrid.appendChild(createPreviewItem(preview));
-        });
+        previewGrid.appendChild(createPreviewItem(data.preview));
         
         // Show preview actions
         document.getElementById('previewActions').classList.add('show');
-        updateExportButton();
+        document.getElementById('exportBtn').disabled = false;
         
       } catch (error) {
         alert(error.message);
@@ -576,63 +550,70 @@
       const originalButtonText = exportBtn.textContent;
       
       try {
-        // Show spinner and disable button
         spinner.style.display = 'block';
         exportBtn.disabled = true;
         exportBtn.textContent = 'Exporting...';
         
-        // Submit selected IDs and their fit methods
+        const previewId = document.querySelector('.preview-item').dataset.id;
         const response = await fetch('/export', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            selectedIds: Array.from(selectedPreviews)
+          body: JSON.stringify({ 
+            previewId,
+            isDouble: true
           })
         });
         
-        const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to export images');
+          throw new Error('Failed to export frame');
         }
         
-        // Update success screen
-        const endTime = new Date();
-        const processingTime = ((endTime - startTime) / 1000).toFixed(1);
+        const data = await response.json();
         
-        document.getElementById('processedCount').textContent = selectedPreviews.size;
-        document.getElementById('processingTime').textContent = processingTime;
-        document.getElementById('downloadLink').href = data.url;
-        document.getElementById('downloadLink').download = data.filename;
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = data.url;
+        link.download = data.filename || 'framed_image.jpg';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         
-        // Hide preview grid and show success screen
+        // Show success screen
+        const successScreen = document.getElementById('successScreen');
+        document.getElementById('processingTime').textContent = 
+          ((new Date() - startTime) / 1000).toFixed(1);
+        successScreen.classList.add('show');
+        
+        // Hide preview grid and actions
         document.getElementById('previewGrid').classList.remove('show');
         document.getElementById('previewActions').classList.remove('show');
-        document.getElementById('successScreen').classList.add('show');
         
       } catch (error) {
         alert(error.message);
       } finally {
         spinner.style.display = 'none';
-        exportBtn.disabled = selectedPreviews.size === 0;
+        exportBtn.disabled = false;
         exportBtn.textContent = originalButtonText;
       }
     });
 
-    // Download link handler - direct download using native browser download
-    document.getElementById('downloadLink').addEventListener('click', function(e) {
-      // Let the native download attribute handle it
-      return true;
+    // Add click handler for reset button
+    document.getElementById('resetButton').addEventListener('click', function(e) {
+      e.preventDefault();
+      resetForm();
     });
 
-    // New export button handler
+    // Add click handler for new export button
     document.getElementById('newExportButton').addEventListener('click', function(e) {
       e.preventDefault();
+      resetForm();
       document.getElementById('successScreen').classList.remove('show');
-      document.getElementById('previewGrid').classList.add('show');
-      document.getElementById('previewActions').classList.add('show');
     });
+
+    // Initialize preview gravity settings
+    const previewGravitySettings = new Map();
   </script>
 </body>
 </html>
