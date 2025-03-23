@@ -1,0 +1,287 @@
+/* Base styles */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+h1 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Navigation */
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.nav-link {
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: #666;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.nav-link.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Upload form */
+.upload-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.upload-container.hide {
+  display: none;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Form fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field label {
+  font-weight: 500;
+  color: #444;
+}
+
+.file-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Triple frame specific */
+.upload-fields {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.upload-fields .field {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+/* Buttons */
+.submit-button {
+  background-color: #007bff;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.reset-button {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover {
+  background-color: #5a6268;
+}
+
+/* Preview section */
+.preview-grid {
+  display: none;
+  margin-top: 2rem;
+}
+
+.preview-grid.show {
+  display: block;
+}
+
+.preview-item {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.preview-frame {
+  margin-bottom: 1rem;
+}
+
+.preview-frame img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+/* Gravity controls */
+.gravity-controls {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.gravity-control {
+  flex: 1;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.gravity-control label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.gravity-control select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.9rem;
+}
+
+/* Preview actions */
+.preview-actions {
+  display: none;
+  margin-top: 2rem;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.preview-actions.show {
+  display: flex;
+}
+
+/* Info section */
+.info {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #e9ecef;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.info.hide {
+  display: none;
+}
+
+/* Success screen */
+.success-screen {
+  display: none;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.success-screen.show {
+  display: block;
+}
+
+.success-message {
+  color: #28a745;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.processing-time {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+/* Loading spinner */
+.loading {
+  display: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+.loading.show {
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* File list */
+.selected-files {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selected-files ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.selected-files li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.selected-files li:last-child {
+  border-bottom: none;
+}

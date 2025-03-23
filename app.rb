@@ -4,6 +4,8 @@ require 'json'
 require 'tempfile'
 require 'zip'
 require 'fileutils'
+
+VALID_GRAVITIES = ['center', 'north', 'south', 'west', 'east', 'northwest', 'northeast', 'southwest', 'southeast']
 require 'securerandom'
 
 set :public_folder, File.dirname(__FILE__) + '/public'
@@ -21,13 +23,28 @@ helpers do
 
   def save_preview(preview_id, file_path, original_path, original_filename, gravity)
     $previews[preview_id] = {
-      path: file_path,
-      original_path: original_path,
-      filename: original_filename,
-      gravity: gravity
+      'path' => file_path,
+      'original_path' => original_path,
+      'filename' => original_filename,
+      'gravity' => gravity
     }
   end
-  def process_image(image_file, original_filename, gravity = 'center', target_width = 3440, target_height = 1760)
+
+  def save_uploaded_file(upload)
+    temp = Tempfile.new(['upload', File.extname(upload[:filename])])
+    temp.binmode
+    temp.write(upload[:tempfile].read)
+    temp.rewind
+    temp
+  end
+
+  def save_original_file(temp_file)
+    original_path = "public/originals/#{File.basename(temp_file.path)}"
+    FileUtils.mkdir_p('public/originals')
+    FileUtils.cp(temp_file.path, original_path)
+    original_path
+  end
+  def process_image(image_file, original_filename, gravity = 'center', target_width = 3440, target_height = 1760, skip_frame = false)
     # Create a temporary file for the result
     temp_file = Tempfile.new(['framed', '.jpg'])
     
@@ -78,15 +95,17 @@ helpers do
         # Crop to exact dimensions using the specified gravity
         convert.extent("#{target_width}x#{target_height}")
         
-        # Create the frame with the cropped image centered
-        convert.gravity('center')
-        convert.background('white')
-        convert.extent("#{target_width + 400}x#{target_height + 400}")
-        
-        # Add inner shadow
-        convert.shave('2x2')
-        convert.border('2')
-        convert.bordercolor('rgba(0,0,0,0.1)')
+        unless skip_frame
+          # Create the frame with the cropped image centered
+          convert.gravity('center')
+          convert.background('white')
+          convert.extent("#{target_width + 400}x#{target_height + 400}")
+          
+          # Add inner shadow
+          convert.shave('2x2')
+          convert.border('2')
+          convert.bordercolor('rgba(0,0,0,0.1)')
+        end
         
         # Optimize JPEG output
         convert.colorspace('sRGB')
@@ -111,6 +130,99 @@ helpers do
     
     # Return the temp file and the framed filename
     [temp_file, "framed_#{original_filename.sub(/\.[^.]+\z/, '')}.jpg"]
+  end
+
+  def process_with_shadow(image_file, filename, gravity, width, height)
+    temp = Tempfile.new(['shadow', '.jpg'])
+    begin
+      # Account for shadow border in dimensions
+      shadow_width = width - 4  # 2px on each side
+      shadow_height = height - 4  # 2px on each side
+      
+      # Process image without frame and shadow
+      processed, _ = process_image(image_file, filename, gravity, shadow_width, shadow_height, true)
+      
+      # Add inset shadow
+      MiniMagick::Tool::Convert.new do |convert|
+        convert << processed.path
+        convert.shave('1x1')  # Reduced from 2x2 to account for border
+        convert.border('1')   # Reduced from 2 to stay within dimensions
+        convert.bordercolor('rgba(0,0,0,0.08)')  # Slightly reduced opacity
+        convert << temp.path
+      end
+      temp
+    ensure
+      processed&.close
+      processed&.unlink
+    end
+  end
+
+  def process_triple_image(left_file, middle_file, right_file, left_filename, middle_filename, right_filename, left_gravity = 'center', middle_gravity = 'center', right_gravity = 'center')
+    # Create a temporary file for the result
+    temp_file = Tempfile.new(['framed_triple', '.jpg'])
+    
+    begin
+      # Calculate dimensions ensuring we stay within 3840x2160
+      border_spacing = 140  # Reduced to give more space to images
+      total_width = 3840
+      total_height = 2160
+      
+      # Available space for images after borders
+      available_width = total_width - (border_spacing * 4)  # 4 borders: left, between images, and right
+      single_width = (available_width / 3).floor  # Divide remaining space equally and ensure integer
+      height = (total_height - (border_spacing * 2)).floor  # Top and bottom borders, ensure integer
+      
+      # Process images with shadow effect
+      left_temp = process_with_shadow(left_file, left_filename, left_gravity, single_width, height)
+      middle_temp = process_with_shadow(middle_file, middle_filename, middle_gravity, single_width, height)
+      right_temp = process_with_shadow(right_file, right_filename, right_gravity, single_width, height)
+      
+      # Combine images with white borders
+      MiniMagick::Tool::Convert.new do |convert|
+        # Create a white canvas for the background
+        convert.size("#{total_width}x#{total_height}")
+        convert.xc('white')
+        
+        # Calculate positions
+        left_x = border_spacing
+        middle_x = left_x + single_width + border_spacing
+        right_x = middle_x + single_width + border_spacing
+        y = border_spacing
+        
+        # Place images
+        convert.draw("image over #{left_x},#{y} 0,0 '#{left_temp.path}'")
+        convert.draw("image over #{middle_x},#{y} 0,0 '#{middle_temp.path}'")
+        convert.draw("image over #{right_x},#{y} 0,0 '#{right_temp.path}'")
+        
+        # Optimize output
+        convert.colorspace('sRGB')
+        convert.quality('95')
+        convert.strip
+        convert.interlace('Plane')
+        convert.sampling_factor('4:2:0')
+        
+        # Output final image
+        convert << temp_file.path
+      end
+      
+      puts "Triple image processing completed successfully"
+    rescue MiniMagick::Error => e
+      puts "MiniMagick error: #{e.message}"
+      puts "Command output: #{e.output}" if e.respond_to?(:output)
+      raise
+    rescue => e
+      puts "Unexpected error: #{e.message}"
+      raise
+    ensure
+      # Clean up temporary files
+      [left_temp, middle_temp, right_temp].each do |temp|
+        temp&.close
+        temp&.unlink
+      end
+    end
+    
+    # Return the temp file and the framed filename
+    [temp_file, "framed_triple_#{Time.now.strftime('%Y%m%d_%H%M%S')}.jpg"]
   end
 
   def process_double_image(left_file, right_file, left_filename, right_filename, left_gravity = 'center', right_gravity = 'center')
@@ -176,6 +288,150 @@ end
 
 get '/double' do
   erb :double
+end
+
+get '/triple' do
+  erb :triple
+end
+
+post '/preview-triple' do
+  begin
+    # Check if files were uploaded
+    unless params[:leftImage] && params[:middleImage] && params[:rightImage]
+      status 400
+      return "Missing required images"
+    end
+
+    content_type :json
+
+    # Generate a preview ID
+    preview_id = generate_preview_id
+
+    # Save uploaded files to disk temporarily
+    left_temp = save_uploaded_file(params[:leftImage])
+    middle_temp = save_uploaded_file(params[:middleImage])
+    right_temp = save_uploaded_file(params[:rightImage])
+
+    # Save original files for reprocessing
+    left_original = save_original_file(left_temp)
+    middle_original = save_original_file(middle_temp)
+    right_original = save_original_file(right_temp)
+
+    # Process the triple image
+    temp_file, filename = process_triple_image(
+      File.new(left_temp.path),
+      File.new(middle_temp.path),
+      File.new(right_temp.path),
+      params[:leftImage][:filename],
+      params[:middleImage][:filename],
+      params[:rightImage][:filename]
+    )
+
+    # Save the preview
+    preview_path = "public/previews/#{File.basename(temp_file.path)}"
+    FileUtils.cp(temp_file.path, preview_path)
+
+    # Store preview information
+    $previews[preview_id] = {
+      'path' => preview_path,
+      'left_original' => left_original,
+      'middle_original' => middle_original,
+      'right_original' => right_original,
+      'left_filename' => params[:leftImage][:filename],
+      'middle_filename' => params[:middleImage][:filename],
+      'right_filename' => params[:rightImage][:filename],
+      'left_gravity' => 'center',
+      'middle_gravity' => 'center',
+      'right_gravity' => 'center'
+    }
+
+    # Return preview information
+    {
+      'id' => preview_id,
+      'url' => "/previews/#{File.basename(temp_file.path)}?t=#{Time.now.to_i}",
+      'leftGravity' => 'center',
+      'middleGravity' => 'center',
+      'rightGravity' => 'center'
+    }.to_json
+  rescue => e
+    puts "Error: #{e.message}"
+    puts e.backtrace
+    status 500
+    { 'error' => e.message }.to_json
+  ensure
+    # Clean up temporary files
+    [left_temp, middle_temp, right_temp, temp_file].each do |temp|
+      temp&.close
+      temp&.unlink
+    end
+  end
+end
+
+post '/reprocess-triple' do
+  content_type :json
+  begin
+    puts "Received reprocess-triple request"
+    data = JSON.parse(request.body.read)
+    puts "Request data: #{data.inspect}"
+    preview_id = data['previewId']
+    position = data['position']
+    gravity = data['gravity']
+
+    puts "Validating parameters: preview_id=#{preview_id}, position=#{position}, gravity=#{gravity}"
+    unless preview_id && position && gravity && VALID_GRAVITIES.include?(gravity)
+      error_msg = "Invalid parameters: preview_id=#{preview_id}, position=#{position}, gravity=#{gravity}, valid_gravity=#{VALID_GRAVITIES.include?(gravity)}"
+      puts error_msg
+      status 400
+      return { 'error' => error_msg }.to_json
+    end
+
+    preview = $previews[preview_id]
+    puts "Found preview: #{preview ? 'yes' : 'no'}"
+    unless preview
+      status 404
+      return { 'error' => 'Preview not found' }.to_json
+    end
+
+    puts "Preview data: #{preview.inspect}"
+
+    # Update gravity for the specified position
+    puts "Before update: #{position}_gravity = #{preview["#{position}_gravity"]}"
+    preview["#{position}_gravity"] = gravity
+    puts "After update: #{position}_gravity = #{preview["#{position}_gravity"]}"
+    puts "All gravities: left=#{preview['left_gravity']}, middle=#{preview['middle_gravity']}, right=#{preview['right_gravity']}"
+
+    # Process the triple image with updated gravity settings
+    puts "Starting image processing"
+    temp_file, _ = process_triple_image(
+      File.new(preview['left_original']),
+      File.new(preview['middle_original']),
+      File.new(preview['right_original']),
+      preview['left_filename'],
+      preview['middle_filename'],
+      preview['right_filename'],
+      preview['left_gravity'],
+      preview['middle_gravity'],
+      preview['right_gravity']
+    )
+    puts "Processing complete with gravities: left=#{preview['left_gravity']}, middle=#{preview['middle_gravity']}, right=#{preview['right_gravity']}"
+
+    # Update the preview file
+    puts "Copying temp file to preview path"
+    FileUtils.cp(temp_file.path, preview['path'])
+
+    # Return the updated preview URL with cache-busting timestamp
+    response = { 'url' => "/previews/#{File.basename(preview['path'])}?t=#{Time.now.to_i}" }
+    puts "Sending response: #{response.inspect}"
+    response.to_json
+  rescue => e
+    puts "Error: #{e.message}"
+    puts e.backtrace
+    status 500
+    { 'error' => e.message }.to_json
+  ensure
+    temp_file&.close
+    temp_file&.unlink
+  end
 end
 
 post '/preview' do
@@ -455,26 +711,43 @@ post '/export' do
       # For single image, just copy it to downloads
       preview = valid_previews.first
       
+      # Handle triple frame preview
+      if preview['left_original'] && preview['middle_original'] && preview['right_original']
+        # Process triple frame with current gravity settings
+        temp_file, _ = process_triple_image(
+          File.new(preview['left_original']),
+          File.new(preview['middle_original']),
+          File.new(preview['right_original']),
+          preview['left_filename'],
+          preview['middle_filename'],
+          preview['right_filename'],
+          preview['left_gravity'],
+          preview['middle_gravity'],
+          preview['right_gravity']
+        )
+        download_filename = "framed_triple_#{timestamp}.jpg"
+        download_path = File.join('public/downloads', download_filename)
+        FileUtils.mv(temp_file.path, download_path)
       # Handle double frame preview
-      if preview[:left_original] && preview[:right_original]
+      elsif preview['left_original'] && preview['right_original']
         # Process double frame with current gravity settings
         temp_file, _ = process_double_image(
-          File.new(preview[:left_original]),
-          File.new(preview[:right_original]),
-          preview[:left_filename],
-          preview[:right_filename],
-          preview[:left_gravity],
-          preview[:right_gravity]
+          File.new(preview['left_original']),
+          File.new(preview['right_original']),
+          preview['left_filename'],
+          preview['right_filename'],
+          preview['left_gravity'],
+          preview['right_gravity']
         )
         download_filename = "framed_double_#{timestamp}.jpg"
         download_path = File.join('public/downloads', download_filename)
         FileUtils.mv(temp_file.path, download_path)
       else
         # Single frame
-        base_filename = preview[:filename].sub(/\.[^.]+\z/, '')
+        base_filename = preview['filename'].sub(/\.[^.]+\z/, '')
         download_filename = "framed_#{base_filename}.jpg"
         download_path = File.join('public/downloads', download_filename)
-        FileUtils.cp(preview[:path], download_path)
+        FileUtils.cp(preview['path'], download_path)
       end
       
       # Return JSON response for single file
@@ -495,22 +768,37 @@ post '/export' do
         
         # Process each preview and save to temp directory
         valid_previews.each_with_index do |preview, index|
-          if preview[:left_original] && preview[:right_original]
+          if preview['left_original'] && preview['middle_original'] && preview['right_original']
+            # Process triple frame
+            temp_file, _ = process_triple_image(
+              File.new(preview['left_original']),
+              File.new(preview['middle_original']),
+              File.new(preview['right_original']),
+              preview['left_filename'],
+              preview['middle_filename'],
+              preview['right_filename'],
+              preview['left_gravity'],
+              preview['middle_gravity'],
+              preview['right_gravity']
+            )
+            temp_path = File.join(temp_dir, "framed_triple_#{index + 1}.jpg")
+            FileUtils.mv(temp_file.path, temp_path)
+          elsif preview['left_original'] && preview['right_original']
             # Process double frame
             temp_file, _ = process_double_image(
-              File.new(preview[:left_original]),
-              File.new(preview[:right_original]),
-              preview[:left_filename],
-              preview[:right_filename],
-              preview[:left_gravity],
-              preview[:right_gravity]
+              File.new(preview['left_original']),
+              File.new(preview['right_original']),
+              preview['left_filename'],
+              preview['right_filename'],
+              preview['left_gravity'],
+              preview['right_gravity']
             )
             temp_path = File.join(temp_dir, "framed_double_#{index + 1}.jpg")
             FileUtils.mv(temp_file.path, temp_path)
           else
             # Copy single frame
-            temp_path = File.join(temp_dir, "framed_#{preview[:filename].sub(/\.[^.]+\z/, '')}.jpg")
-            FileUtils.cp(preview[:path], temp_path)
+            temp_path = File.join(temp_dir, "framed_#{preview['filename'].sub(/\.[^.]+\z/, '')}.jpg")
+            FileUtils.cp(preview['path'], temp_path)
           end
         end
 

@@ -18,6 +18,13 @@ FrameKit is a web application that allows users to create beautifully framed ima
 - Perfect for before/after comparisons
 - Maintains consistent spacing and alignment
 
+### Triple Frame
+- Upload three images for a triptych presentation
+- Independent position control for each image
+- Synchronized frame dimensions
+- Perfect for showcasing a series or panoramic scenes
+- Maintains consistent spacing and alignment
+
 ## Requirements
 
 - Ruby 3.0.0 or higher
@@ -70,6 +77,16 @@ FrameKit is a web application that allows users to create beautifully framed ima
 4. Adjust each image's position independently:
    - Left image controls are under the left side
    - Right image controls are under the right side
+5. Click "Export" to download the combined frame
+
+### Triple Frame
+1. Click "Triple Frame" in the navigation
+2. Select three images using the upload fields
+3. Click "Frame Images" to process all images
+4. Adjust each image's position independently:
+   - Left image controls for the left panel
+   - Middle image controls for the center panel
+   - Right image controls for the right panel
 5. Click "Export" to download the combined frame
 
 ## Technical Details
