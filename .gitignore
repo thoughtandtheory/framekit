@@ -26,6 +26,7 @@
 !/tmp/storage/
 !/tmp/storage/.keep
 /public/assets
+/public/originals/*
 
 # Generated previews and downloads
 /public/previews/*

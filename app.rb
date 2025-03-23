@@ -81,6 +81,7 @@ helpers do
         # Create the frame with the cropped image centered
         convert.gravity('center')
         convert.background('white')
+        convert.extent("#{target_width + 400}x#{target_height + 400}")
         
         # Add inner shadow
         convert.shave('2x2')
