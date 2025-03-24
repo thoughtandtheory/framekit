@@ -1,0 +1,4 @@
+<% frame_type ||= 'single' %>
+<div class="mt-8 p-4 bg-gray-50 rounded-lg text-gray-600 text-sm" id="pageInfo">
+  <p>Upload <%= frame_type %> <%= frame_type == 'one' ? 'image' : 'images' %> and they will be framed side by side with a white border of 200px on all sides<%= frame_type != 'one' ? ' and between images' : '' %>, resulting in a final size of 3840x2160 pixels. The framed image will be available for download.</p>
+</div>

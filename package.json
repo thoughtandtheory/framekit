@@ -1,0 +1,22 @@
+{
+  "name": "frameapp",
+  "version": "1.0.0",
+  "description": "FrameKit is a web application that allows users to create beautifully framed images with precise control over image positioning. Whether you need a single framed image or a side-by-side presentation, FrameKit offers an elegant solution with a subtle inner shadow effect.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tailwindcss -i ./src/input.css -o ./public/css/styles.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.15"
+  }
+}

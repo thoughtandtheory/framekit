@@ -1,0 +1,12 @@
+<% frame_type ||= 'single' %>
+<div class="hidden mt-8 p-8 bg-green-50 border border-green-200 rounded-lg text-center" id="successScreen">
+  <h2 class="text-2xl font-bold text-green-600 mb-4">Frame Exported Successfully! 🎉</h2>
+  <div class="text-gray-600 space-y-2">
+    <p>Your <%= frame_type %> frame has been created</p>
+    <p>Processing time: <span id="processingTime" class="font-medium">0</span> seconds</p>
+  </div>
+  <div class="mt-8 flex justify-center gap-4">
+    <a href="#" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200" id="downloadButton" download>Download Frame</a>
+    <button class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors duration-200" id="newExportButton">Create Another</button>
+  </div>
+</div>

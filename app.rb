@@ -5,7 +5,6 @@ require 'tempfile'
 require 'zip'
 require 'fileutils'
 
-VALID_GRAVITIES = ['center', 'north', 'south', 'west', 'east', 'northwest', 'northeast', 'southwest', 'southeast']
 require 'securerandom'
 
 set :public_folder, File.dirname(__FILE__) + '/public'
@@ -17,6 +16,19 @@ VALID_GRAVITIES = ['center', 'north', 'south', 'west', 'east', 'northwest', 'nor
 $previews = {}
 
 helpers do
+  def partial(template, locals = {})
+    # Pass all locals from parent template
+    erb("partials/#{template}".to_sym, locals: locals.merge(local_variables.each_with_object({}) { |v, h| h[v] = binding.local_variable_get(v) }))
+  end
+
+  def current_page
+    case request.path_info
+    when '/' then 'single'
+    when '/double' then 'double'
+    when '/triple' then 'triple'
+    end
+  end
+
   def generate_preview_id
     SecureRandom.uuid
   end
@@ -69,9 +81,9 @@ helpers do
         
         # Apply gravity for initial crop
         case gravity
-        when 'north', 'top'
+        when 'top', 'north'
           convert.gravity('north')
-        when 'south', 'bottom'
+        when 'bottom', 'south'
           convert.gravity('south')
         when 'west'
           convert.gravity('west')
@@ -231,12 +243,12 @@ helpers do
     
     begin
       # Process left and right images separately first
-      left_width = 1620  # (3440 - 200) / 2
-      right_width = 1620
-      height = 1760      # 2160 - (200 * 2)
+      left_width = 1720  # (3440 - 200) / 2
+      right_width = 1720
+      height = 1960      # 2160 - 200
       
-      left_temp, _ = process_image(left_file, left_filename, left_gravity, left_width, height)
-      right_temp, _ = process_image(right_file, right_filename, right_gravity, right_width, height)
+      left_temp, _ = process_image(left_file, left_filename, left_gravity, left_width, height, true)
+      right_temp, _ = process_image(right_file, right_filename, right_gravity, right_width, height, true)
       
       # Combine images with white border
       MiniMagick::Tool::Convert.new do |convert|
@@ -245,10 +257,10 @@ helpers do
         convert.xc('white')
         
         # Place left image
-        convert.draw("image over #{200},200 0,0 '#{left_temp.path}'")
+        convert.draw("image over #{100},100 0,0 '#{left_temp.path}'")
         
         # Place right image (200px from left image)
-        convert.draw("image over #{200 + left_width + 200},200 0,0 '#{right_temp.path}'")
+        convert.draw("image over #{100 + left_width + 200},100 0,0 '#{right_temp.path}'")
         
         # Optimize output
         convert.colorspace('sRGB')
@@ -283,15 +295,15 @@ helpers do
 end
 
 get '/' do
-  erb :index
+  erb :index, locals: { title: 'Single Frame', frame_type: 'one' }
 end
 
 get '/double' do
-  erb :double
+  erb :double, locals: { title: 'Double Frame', frame_type: 'two' }
 end
 
 get '/triple' do
-  erb :triple
+  erb :triple, locals: { title: 'Triple Frame', frame_type: 'three' }
 end
 
 post '/preview-triple' do
@@ -438,8 +450,9 @@ post '/preview' do
   begin
     # Check if files were uploaded
     unless params[:images] && !params[:images].empty?
+      content_type :json
       status 400
-      return "No images uploaded"
+      return { 'error' => 'No images uploaded' }.to_json
     end
 
     content_type :json
@@ -471,24 +484,24 @@ post '/preview' do
         save_preview(preview_id, preview_path, original_path, upload[:filename], 'center')
         
         previews << {
-          id: preview_id,
-          url: "/previews/#{preview_id}.jpg",
-          filename: upload[:filename],
-          gravity: 'center'
+          'id' => preview_id,
+          'url' => "/previews/#{preview_id}.jpg",
+          'filename' => upload[:filename],
+          'gravity' => 'center'
         }
 
         temp_upload.close
         temp_upload.unlink
       rescue => e
         puts "Error processing file: #{e.message}"
-        return { error: "Error processing #{upload[:filename]}: #{e.message}" }.to_json
+        return { 'error' => "Error processing #{upload[:filename]}: #{e.message}" }.to_json
       end
     end
 
-    { previews: previews }.to_json
+    { 'previews' => previews }.to_json
   rescue => e
     status 500
-    { error: "Error processing images: #{e.message}" }.to_json
+    { 'error' => "Error processing images: #{e.message}" }.to_json
   end
 end
 
@@ -497,7 +510,7 @@ post '/preview-double' do
     # Check if exactly two files were uploaded
     unless params[:images] && params[:images].length == 2
       status 400
-      return { error: "Please upload exactly two images" }.to_json
+      return { 'error' => "Please upload exactly two images" }.to_json
     end
 
     content_type :json
@@ -544,21 +557,21 @@ post '/preview-double' do
 
       # Save preview info for both images
       $previews[preview_id] = {
-        path: preview_path,
-        left_original: left_original,
-        right_original: right_original,
-        left_filename: left_upload[:filename],
-        right_filename: right_upload[:filename],
-        left_gravity: 'east',   # Right-align left image
-        right_gravity: 'west'  # Left-align right image
+        'path' => preview_path,
+        'left_original' => left_original,
+        'right_original' => right_original,
+        'left_filename' => left_upload[:filename],
+        'right_filename' => right_upload[:filename],
+        'left_gravity' => 'east',   # Right-align left image
+        'right_gravity' => 'west'  # Left-align right image
       }
 
       {
-        preview: {
-          id: preview_id,
-          url: "/previews/#{preview_id}.jpg",
-          leftGravity: 'east',   # Right-align left image
-          rightGravity: 'west'  # Left-align right image
+        'preview' => {
+          'id' => preview_id,
+          'url' => "/previews/#{preview_id}.jpg",
+          'leftGravity' => 'east',   # Right-align left image
+          'rightGravity' => 'west'  # Left-align right image
         }
       }.to_json
 
@@ -571,7 +584,7 @@ post '/preview-double' do
 
   rescue => e
     status 500
-    { error: "Error processing images: #{e.message}" }.to_json
+    { 'error' => "Error processing images: #{e.message}" }.to_json
   end
 end
 
@@ -585,35 +598,35 @@ post '/reprocess' do
     # Validate parameters
     unless preview_id && $previews[preview_id]
       status 400
-      return { error: "Invalid preview ID" }.to_json
+      return { 'error' => "Invalid preview ID" }.to_json
     end
 
     unless VALID_GRAVITIES.include?(gravity)
       status 400
-      return { error: "Invalid gravity: #{gravity}" }.to_json
+      return { 'error' => "Invalid gravity: #{gravity}" }.to_json
     end
 
     preview = $previews[preview_id]
-    original_file = File.new(preview[:original_path])
+    original_file = File.new(preview['original_path'])
 
     # Process the image with new gravity setting
-    temp_file, _ = process_image(original_file, preview[:filename], gravity)
+    temp_file, _ = process_image(original_file, preview['filename'], gravity)
     preview_path = "public/previews/#{preview_id}.jpg"
     FileUtils.mv(temp_file.path, preview_path)
 
     # Update preview info
-    $previews[preview_id][:gravity] = gravity
+    $previews[preview_id]['gravity'] = gravity
 
     {
-      url: "/previews/#{preview_id}.jpg",
-      gravity: gravity
+      'url' => "/previews/#{preview_id}.jpg",
+      'gravity' => gravity
     }.to_json
   rescue JSON::ParserError
     status 400
-    { error: "Invalid JSON in request" }.to_json
+    { 'error' => "Invalid JSON in request" }.to_json
   rescue => e
     status 500
-    { error: "Error reprocessing image: #{e.message}" }.to_json
+    { 'error' => "Error reprocessing image: #{e.message}" }.to_json
   end
 end
 
@@ -628,36 +641,36 @@ post '/reprocess-double' do
     # Validate parameters
     unless preview_id && $previews[preview_id]
       status 400
-      return { error: "Invalid preview ID" }.to_json
+      return { 'error' => "Invalid preview ID" }.to_json
     end
 
     unless ['left', 'right'].include?(position)
       status 400
-      return { error: "Invalid position: #{position}" }.to_json
+      return { 'error' => "Invalid position: #{position}" }.to_json
     end
 
     unless VALID_GRAVITIES.include?(gravity)
       status 400
-      return { error: "Invalid gravity: #{gravity}" }.to_json
+      return { 'error' => "Invalid gravity: #{gravity}" }.to_json
     end
 
     preview = $previews[preview_id]
     
     # Update the gravity for the specified position
     if position == 'left'
-      preview[:left_gravity] = gravity
+      preview['left_gravity'] = gravity
     else
-      preview[:right_gravity] = gravity
+      preview['right_gravity'] = gravity
     end
 
     # Process both images with updated gravity settings
     temp_file, _ = process_double_image(
-      File.new(preview[:left_original]),
-      File.new(preview[:right_original]),
-      preview[:left_filename],
-      preview[:right_filename],
-      preview[:left_gravity],
-      preview[:right_gravity]
+      File.new(preview['left_original']),
+      File.new(preview['right_original']),
+      preview['left_filename'],
+      preview['right_filename'],
+      preview['left_gravity'],
+      preview['right_gravity']
     )
 
     # Update preview file
@@ -665,9 +678,9 @@ post '/reprocess-double' do
     FileUtils.mv(temp_file.path, preview_path)
 
     {
-      url: "/previews/#{preview_id}.jpg",
-      leftGravity: preview[:left_gravity],
-      rightGravity: preview[:right_gravity]
+      'url' => "/previews/#{preview_id}.jpg",
+      'leftGravity' => preview['left_gravity'],
+      'rightGravity' => preview['right_gravity']
     }.to_json
   rescue JSON::ParserError
     status 400
@@ -691,7 +704,7 @@ post '/export' do
 
     if selected_ids.empty?
       status 400
-      return { error: "No images selected" }.to_json
+      return { 'error' => "No images selected" }.to_json
     end
 
     # Filter valid preview IDs
@@ -699,7 +712,7 @@ post '/export' do
 
     if valid_previews.empty?
       status 400
-      return { error: "No valid images found" }.to_json
+      return { 'error' => "No valid images found" }.to_json
     end
 
     # Clean up old downloads
@@ -712,7 +725,9 @@ post '/export' do
       preview = valid_previews.first
       
       # Handle triple frame preview
-      if preview['left_original'] && preview['middle_original'] && preview['right_original']
+      if preview['left_original'] && preview['middle_original'] && preview['right_original'] &&
+         preview['left_filename'] && preview['middle_filename'] && preview['right_filename'] &&
+         File.exist?(preview['left_original']) && File.exist?(preview['middle_original']) && File.exist?(preview['right_original'])
         # Process triple frame with current gravity settings
         temp_file, _ = process_triple_image(
           File.new(preview['left_original']),
@@ -729,7 +744,9 @@ post '/export' do
         download_path = File.join('public/downloads', download_filename)
         FileUtils.mv(temp_file.path, download_path)
       # Handle double frame preview
-      elsif preview['left_original'] && preview['right_original']
+      elsif preview['left_original'] && preview['right_original'] &&
+            preview['left_filename'] && preview['right_filename'] &&
+            File.exist?(preview['left_original']) && File.exist?(preview['right_original'])
         # Process double frame with current gravity settings
         temp_file, _ = process_double_image(
           File.new(preview['left_original']),
@@ -744,17 +761,27 @@ post '/export' do
         FileUtils.mv(temp_file.path, download_path)
       else
         # Single frame
-        base_filename = preview['filename'].sub(/\.[^.]+\z/, '')
-        download_filename = "framed_#{base_filename}.jpg"
-        download_path = File.join('public/downloads', download_filename)
-        FileUtils.cp(preview['path'], download_path)
+        if preview['path'] && File.exist?(preview['path'])
+          filename = preview['filename']
+          if filename
+            base_filename = filename.sub(/\.[^.]+\z/, '')
+            download_filename = "framed_#{base_filename}.jpg"
+          else
+            download_filename = "framed_image_#{timestamp}.jpg"
+          end
+          download_path = File.join('public/downloads', download_filename)
+          FileUtils.cp(preview['path'], download_path)
+        else
+          status 400
+          return { 'error' => "Invalid preview: missing or invalid file path" }.to_json
+        end
       end
       
       # Return JSON response for single file
       {
-        url: "/downloads/#{download_filename}",
-        filename: download_filename,
-        count: 1
+        'url' => "/downloads/#{download_filename}",
+        'filename' => download_filename,
+        'count' => 1
       }.to_json
     else
       # For multiple images, create a ZIP
@@ -768,7 +795,9 @@ post '/export' do
         
         # Process each preview and save to temp directory
         valid_previews.each_with_index do |preview, index|
-          if preview['left_original'] && preview['middle_original'] && preview['right_original']
+          if preview['left_original'] && preview['middle_original'] && preview['right_original'] &&
+             preview['left_filename'] && preview['middle_filename'] && preview['right_filename'] &&
+             File.exist?(preview['left_original']) && File.exist?(preview['middle_original']) && File.exist?(preview['right_original'])
             # Process triple frame
             temp_file, _ = process_triple_image(
               File.new(preview['left_original']),
@@ -783,7 +812,9 @@ post '/export' do
             )
             temp_path = File.join(temp_dir, "framed_triple_#{index + 1}.jpg")
             FileUtils.mv(temp_file.path, temp_path)
-          elsif preview['left_original'] && preview['right_original']
+          elsif preview['left_original'] && preview['right_original'] &&
+                  preview['left_filename'] && preview['right_filename'] &&
+                  File.exist?(preview['left_original']) && File.exist?(preview['right_original'])
             # Process double frame
             temp_file, _ = process_double_image(
               File.new(preview['left_original']),
@@ -797,8 +828,19 @@ post '/export' do
             FileUtils.mv(temp_file.path, temp_path)
           else
             # Copy single frame
-            temp_path = File.join(temp_dir, "framed_#{preview['filename'].sub(/\.[^.]+\z/, '')}.jpg")
-            FileUtils.cp(preview['path'], temp_path)
+            if preview['path'] && File.exist?(preview['path'])
+              filename = preview['filename']
+              if filename
+                base_filename = filename.sub(/\.[^.]+\z/, '')
+                temp_path = File.join(temp_dir, "framed_#{base_filename}.jpg")
+              else
+                temp_path = File.join(temp_dir, "framed_image_#{index + 1}.jpg")
+              end
+              FileUtils.cp(preview['path'], temp_path)
+            else
+              puts "Warning: Skipping invalid preview with missing or invalid path: #{preview.inspect}"
+              next
+            end
           end
         end
 
@@ -823,20 +865,20 @@ post '/export' do
 
         # Return JSON response for ZIP file
         {
-          url: "/downloads/#{zip_filename}",
-          filename: zip_filename,
-          count: valid_previews.length
+          'url' => "/downloads/#{zip_filename}",
+          'filename' => zip_filename,
+          'count' => valid_previews.length
         }.to_json
       rescue => e
         status 500
-        { error: "Error creating ZIP file: #{e.message}" }.to_json
+        { 'error' => "Error creating ZIP file: #{e.message}" }.to_json
       end
     end
   rescue JSON::ParserError
     status 400
-    { error: "Invalid JSON in request" }.to_json
+    { 'error' => "Invalid JSON in request" }.to_json
   rescue => e
     status 500
-    { error: "Error exporting images: #{e.message}" }.to_json
+    { 'error' => "Error exporting images: #{e.message}" }.to_json
   end
 end

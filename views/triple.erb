@@ -1,63 +1,41 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Image Framer - Triple Frame</title>
-  <link rel="stylesheet" href="/css/styles.css">
-</head>
-<body>
-  <h1>Image Framer</h1>
+<%= partial :head %>
+<body class="max-w-7xl mx-auto p-8 font-sans leading-relaxed">
+  <h1 class="text-3xl font-bold text-gray-800 text-center mb-8">Image Framer</h1>
 
-  <nav class="nav">
-    <a href="/" class="nav-link">Single Frame</a>
-    <a href="/double" class="nav-link">Double Frame</a>
-    <a href="/triple" class="nav-link active">Triple Frame</a>
-  </nav>
+  <%= partial :nav %>
 
-  <div class="upload-container">
-    <form id="uploadForm" class="upload-form">
-      <div class="upload-fields">
-        <div class="field">
-          <label for="leftImage">Left Image:</label>
-          <input type="file" id="leftImage" class="file-input" accept="image/*" required>
+  <div class="bg-white rounded-lg shadow-sm p-8 border border-gray-200">
+    <form id="uploadForm" class="flex flex-col gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="flex flex-col gap-2">
+          <label for="leftImage" class="font-medium text-gray-700">Left Image:</label>
+          <input type="file" id="leftImage" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" accept="image/*" required>
         </div>
-        <div class="field">
-          <label for="middleImage">Middle Image:</label>
-          <input type="file" id="middleImage" class="file-input" accept="image/*" required>
+        <div class="flex flex-col gap-2">
+          <label for="middleImage" class="font-medium text-gray-700">Middle Image:</label>
+          <input type="file" id="middleImage" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" accept="image/*" required>
         </div>
-        <div class="field">
-          <label for="rightImage">Right Image:</label>
-          <input type="file" id="rightImage" class="file-input" accept="image/*" required>
+        <div class="flex flex-col gap-2">
+          <label for="rightImage" class="font-medium text-gray-700">Right Image:</label>
+          <input type="file" id="rightImage" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" accept="image/*" required>
         </div>
       </div>
-      <div id="fileList" class="selected-files" style="display: none;">
-        <ul></ul>
-      </div>
-      <div class="actions">
-        <button type="submit" id="submitBtn" class="submit-button" disabled>Frame Images</button>
+      <%= partial :file_list %>
+      <div class="flex justify-start">
+        <button type="submit" id="submitBtn" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>Frame Images</button>
       </div>
     </form>
   </div>
 
-  <div class="info" id="pageInfo">
-    <p>Create a stunning triptych by combining three images side by side. Perfect for showcasing a series of related photos, telling a visual story, or displaying panoramic scenes split into three parts. Each image can be individually positioned to create the perfect composition.</p>
-  </div>
+  <%= partial :page_info, locals: { frame_type: 'three' } %>
 
-  <div id="previewGrid" class="preview-grid">
-    <!-- Preview items will be inserted here -->
-  </div>
+  <%= partial :spinner %>
 
-  <div id="previewActions" class="preview-actions">
-    <button id="exportBtn" class="submit-button">Export</button>
-    <button id="resetBtn" class="reset-button">Start Over</button>
-    <div id="processingSpinner" class="loading"></div>
-  </div>
+  <%= partial :preview_grid %>
 
-  <div id="successScreen" class="success-screen">
-    <div class="success-message">Your framed image is ready!</div>
-    <div id="processingTime" class="processing-time"></div>
-    <a id="downloadLink" class="submit-button" download>Download Framed Image</a>
-    <button id="startOverBtn" class="reset-button" style="margin-top: 1rem;">Create Another Frame</button>
-  </div>
+  <%= partial :preview_actions %>
+
+  <%= partial :success_screen, locals: { frame_type: 'triple' } %>
 
   <script>
     function updateFileList() {
@@ -75,9 +53,9 @@
       if (files.length > 0) {
         const ul = fileList.querySelector('ul');
         ul.innerHTML = files.map(file => `<li>${file.position}: ${file.name}</li>`).join('');
-        fileList.style.display = 'block';
+        fileList.classList.remove('hidden');
       } else {
-        fileList.style.display = 'none';
+        fileList.classList.add('hidden');
       }
 
       submitBtn.disabled = !(leftInput.files.length && middleInput.files.length && rightInput.files.length);
@@ -88,22 +66,22 @@
 
     function resetForm() {
       document.getElementById('uploadForm').reset();
-      document.getElementById('fileList').style.display = 'none';
-      document.getElementById('previewGrid').classList.remove('show');
-      document.getElementById('previewActions').classList.remove('show');
-      document.getElementById('successScreen').classList.remove('show');
+      document.getElementById('fileList').classList.add('hidden');
+      document.getElementById('previewGrid').classList.add('hidden');
+      document.getElementById('previewActions').classList.add('hidden');
+      document.getElementById('successScreen').classList.add('hidden');
       document.getElementById('submitBtn').disabled = true;
-      document.getElementById('pageInfo').classList.remove('hide');
+      document.getElementById('pageInfo').classList.remove('hidden');
     }
 
     async function handleGravityChange(select, previewId, position) {
-      const previewItem = select.closest('.preview-item');
-      const loading = previewItem.querySelector('.loading');
+      const previewItem = select.closest('.relative');
+      const loading = previewItem.querySelector('.loading-spinner');
       const gravity = select.value;
       const previousValue = previewGravitySettings.get(`${previewId}-${position}`);
       
       try {
-        loading.classList.add('show');
+        loading.classList.remove('hidden');
         
         const response = await fetch('/reprocess-triple', {
           method: 'POST',
@@ -132,23 +110,23 @@
         select.value = previousValue;
         alert('Failed to change image position. Please try again.');
       } finally {
-        loading.classList.remove('show');
+        loading.classList.add('hidden');
       }
     }
 
     function createPreviewItem(preview) {
       const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
+      previewItem.className = 'preview-item relative bg-white rounded-lg shadow-sm p-6 border border-gray-200';
       previewItem.dataset.id = preview.id;
       
       previewItem.innerHTML = `
-        <div class="preview-frame">
-          <img src="${preview.url}" alt="Triple Frame Preview" data-preview-id="${preview.id}">
+        <div class="mb-6 relative">
+          <img src="${preview.url}" alt="Triple Frame Preview" class="w-full h-auto rounded" data-preview-id="${preview.id}">
         </div>
-        <div class="gravity-controls">
-          <div class="gravity-control">
-            <label>Left Image Position:</label>
-            <select onchange="handleGravityChange(this, '${preview.id}', 'left')">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="flex flex-col gap-2">
+            <label class="block font-medium text-gray-700">Left Image Position:</label>
+            <select class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleGravityChange(this, '${preview.id}', 'left')">
               <option value="center" ${preview.leftGravity === 'center' ? 'selected' : ''}>Center</option>
               <option value="north" ${preview.leftGravity === 'north' ? 'selected' : ''}>Top</option>
               <option value="south" ${preview.leftGravity === 'south' ? 'selected' : ''}>Bottom</option>
@@ -160,9 +138,9 @@
               <option value="southeast" ${preview.leftGravity === 'southeast' ? 'selected' : ''}>Bottom Right</option>
             </select>
           </div>
-          <div class="gravity-control">
-            <label>Middle Image Position:</label>
-            <select onchange="handleGravityChange(this, '${preview.id}', 'middle')">
+          <div class="flex flex-col gap-2">
+            <label class="block font-medium text-gray-700">Middle Image Position:</label>
+            <select class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleGravityChange(this, '${preview.id}', 'middle')">
               <option value="center" ${preview.middleGravity === 'center' ? 'selected' : ''}>Center</option>
               <option value="north" ${preview.middleGravity === 'north' ? 'selected' : ''}>Top</option>
               <option value="south" ${preview.middleGravity === 'south' ? 'selected' : ''}>Bottom</option>
@@ -174,9 +152,9 @@
               <option value="southeast" ${preview.middleGravity === 'southeast' ? 'selected' : ''}>Bottom Right</option>
             </select>
           </div>
-          <div class="gravity-control">
-            <label>Right Image Position:</label>
-            <select onchange="handleGravityChange(this, '${preview.id}', 'right')">
+          <div class="flex flex-col gap-2">
+            <label class="block font-medium text-gray-700">Right Image Position:</label>
+            <select class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleGravityChange(this, '${preview.id}', 'right')">
               <option value="center" ${preview.rightGravity === 'center' ? 'selected' : ''}>Center</option>
               <option value="north" ${preview.rightGravity === 'north' ? 'selected' : ''}>Top</option>
               <option value="south" ${preview.rightGravity === 'south' ? 'selected' : ''}>Bottom</option>
@@ -189,7 +167,9 @@
             </select>
           </div>
         </div>
-        <div class="loading"></div>
+        <div class="loading-spinner hidden absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+          <div class="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
       `;
       
       return previewItem;
@@ -205,7 +185,7 @@
       try {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Processing...';
-        spinner.style.display = 'block';
+        spinner.classList.remove('hidden');
 
         const formData = new FormData();
         formData.append('leftImage', document.getElementById('leftImage').files[0]);
@@ -231,18 +211,20 @@
         const previewGrid = document.getElementById('previewGrid');
         previewGrid.innerHTML = '';
         previewGrid.appendChild(createPreviewItem(preview));
-        previewGrid.classList.add('show');
+        previewGrid.classList.remove('hidden');
         
-        document.getElementById('previewActions').classList.add('show');
-        document.querySelector('.upload-container').classList.add('hide');
-        document.getElementById('pageInfo').classList.add('hide');
+        const previewActions = document.getElementById('previewActions');
+        previewActions.classList.remove('hidden');
+        document.getElementById('exportBtn').disabled = false;
+        document.querySelector('.bg-white').classList.add('hidden');
+        document.getElementById('pageInfo').classList.add('hidden');
       } catch (error) {
         console.error('Error:', error);
         alert('Failed to process images. Please try again.');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = originalButtonText;
-        spinner.style.display = 'none';
+        spinner.classList.add('hidden');
       }
     });
 
@@ -252,13 +234,13 @@
     document.getElementById('rightImage').addEventListener('change', updateFileList);
 
     // Reset button handler
-    document.getElementById('resetBtn').addEventListener('click', function() {
+    document.getElementById('resetButton').addEventListener('click', function() {
       resetForm();
-      document.querySelector('.upload-container').classList.remove('hide');
+      document.querySelector('.bg-white').classList.remove('hidden');
     });
-    document.getElementById('startOverBtn').addEventListener('click', function() {
+    document.getElementById('newExportButton').addEventListener('click', function() {
       resetForm();
-      document.querySelector('.upload-container').classList.remove('hide');
+      document.querySelector('.bg-white').classList.remove('hidden');
     });
 
     // Export button handler
@@ -272,7 +254,7 @@
       try {
         exportBtn.disabled = true;
         exportBtn.textContent = 'Processing...';
-        spinner.style.display = 'block';
+        spinner.classList.remove('hidden');
         
         const previewId = document.querySelector('.preview-item').dataset.id;
         const response = await fetch('/export', {
@@ -292,22 +274,25 @@
         // Show success screen
         const endTime = new Date();
         const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-        document.getElementById('processingTime').textContent = `Processing time: ${processingTime} seconds`;
+        document.getElementById('processingTime').textContent = processingTime;
         
-        const downloadLink = document.getElementById('downloadLink');
-        downloadLink.href = result.url;
-        downloadLink.download = result.filename;
+        // Set up download button
+        const downloadButton = document.getElementById('downloadButton');
+        downloadButton.href = result.url;
+        downloadButton.download = result.filename || 'framed_image.jpg';
         
-        document.getElementById('successScreen').classList.add('show');
-        document.getElementById('previewGrid').classList.remove('show');
-        document.getElementById('previewActions').classList.remove('show');
+        // Show success screen and hide others
+        document.getElementById('successScreen').classList.remove('hidden');
+        document.getElementById('previewGrid').classList.add('hidden');
+        document.getElementById('previewActions').classList.add('hidden');
+        document.getElementById('pageInfo').classList.add('hidden');
       } catch (error) {
         console.error('Error:', error);
         alert('Failed to export image. Please try again.');
       } finally {
         exportBtn.disabled = false;
         exportBtn.textContent = originalButtonText;
-        spinner.style.display = 'none';
+        spinner.classList.add('hidden');
       }
     });
   </script>

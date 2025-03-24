@@ -1,362 +1,46 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Image Framer</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-      line-height: 1.6;
-    }
+<%= partial :head %>
+<body class="max-w-7xl mx-auto p-8 font-sans leading-relaxed">
+  <h1 class="text-3xl font-bold text-gray-800 text-center mb-8">Image Framer</h1>
 
-    .nav {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-bottom: 2rem;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 1rem;
-    }
+  <%= partial :nav %>
 
-    .nav-link {
-      padding: 0.5rem 1rem;
-      text-decoration: none;
-      color: #666;
-      border-radius: 4px;
-      transition: all 0.2s;
-    }
-
-    .nav-link:hover {
-      background: #f5f5f5;
-      color: #333;
-    }
-
-    .nav-link.active {
-      background: #007bff;
-      color: white;
-    }
-
-    h1 {
-      color: #333;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .upload-container {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .upload-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .field label {
-      font-weight: 500;
-      color: #444;
-    }
-
-    .file-input {
-      padding: 0.5rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-
-    .submit-button {
-      background-color: #007bff;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: background-color 0.2s;
-    }
-
-    .submit-button:hover {
-      background-color: #0056b3;
-    }
-
-    .submit-button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
-    .info {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #e9ecef;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    .selected-files {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .selected-files ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .selected-files li {
-      padding: 0.5rem;
-      border-bottom: 1px solid #eee;
-    }
-
-    .selected-files li:last-child {
-      border-bottom: none;
-    }
-
-    .file-count {
-      color: #007bff;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-    
-    /* Success screen styles */
-    .preview-grid {
-      display: none;
-      margin-top: 2rem;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    }
-
-    .preview-grid.show {
-      display: grid;
-    }
-
-    .preview-item {
-      position: relative;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-    }
-
-    .preview-item:hover {
-      transform: translateY(-2px);
-    }
-
-    .preview-item.selected {
-      box-shadow: 0 0 0 3px #4CAF50;
-    }
-
-    .preview-item img {
-      width: 100%;
-      height: 200px;
-      object-fit: contain;
-      background: #f8f9fa;
-      cursor: pointer;
-    }
-
-    .preview-item .preview-info {
-      padding: 0.75rem;
-      border-top: 1px solid #eee;
-    }
-
-    .preview-item .filename {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 0.5rem;
-    }
-
-    .preview-item .gravity-control {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-    }
-
-    .preview-item select {
-      padding: 0.25rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      color: #444;
-      background: #fff;
-      width: 100%;
-    }
-
-    .preview-item .loading {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      display: none;
-    }
-
-    .preview-item .loading.show {
-      display: flex;
-    }
-
-    .preview-actions {
-      display: none;
-      margin-top: 2rem;
-      text-align: center;
-      gap: 1rem;
-    }
-
-    .preview-actions.show {
-      display: flex;
-      justify-content: center;
-    }
-
-    .success-screen {
-      display: none;
-      margin-top: 2rem;
-      padding: 2rem;
-      background: #f0fff0;
-      border: 1px solid #4CAF50;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    .success-screen.show {
-      display: block;
-      animation: fadeIn 0.5s ease-in;
-    }
-
-    .success-screen h2 {
-      color: #4CAF50;
-      margin-bottom: 1rem;
-    }
-
-    .success-details {
-      margin: 1rem 0;
-      color: #666;
-    }
-
-    .download-link {
-      display: inline-block;
-      background: #4CAF50;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      transition: background-color 0.2s;
-    }
-
-    .download-link:hover {
-      background: #45a049;
-    }
-
-    .reset-button {
-      display: inline-block;
-      background: #6c757d;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      transition: background-color 0.2s;
-      margin-left: 1rem;
-      cursor: pointer;
-      border: none;
-      font: inherit;
-    }
-
-    .reset-button:hover {
-      background: #5a6268;
-    }
-
-    /* Processing spinner */
-    .processing-spinner {
-      display: none;
-      margin: 2rem auto;
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #4CAF50;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-  </style>
-</head>
-<body>
-  <h1>Image Framer</h1>
-
-  <nav class="nav">
-    <a href="/" class="nav-link active" id="singleFrameLink">Single Frame</a>
-    <a href="/double" class="nav-link" id="doubleFrameLink">Double Frame</a>
-    <a href="/triple" class="nav-link" id="tripleFrameLink">Triple Frame</a>
-  </nav>
-
-  <div class="upload-container">
-    <form action="/preview" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
-      <div class="field">
-        <label for="images">Choose images to frame</label>
-        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="file-input" onchange="updateFileList()">
+  <div class="bg-white rounded-lg shadow-sm p-8 border border-gray-200">
+    <form class="flex flex-col gap-6" id="uploadForm">
+      <div class="flex flex-col gap-2">
+        <label for="images" class="font-medium text-gray-700">Choose images to frame</label>
+        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updateFileList()">
       </div>
 
-      <div class="selected-files" id="fileList" style="display: none;">
-        <div class="file-count" id="fileCount"></div>
-        <ul id="fileListUl"></ul>
-      </div>
+      <%= partial :file_list %>
 
-      <div class="actions">
-        <button type="submit" class="submit-button" id="submitBtn" disabled>Frame Images</button>
+      <div class="flex justify-start">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" id="submitBtn" disabled>Frame Images</button>
       </div>
     </form>
   </div>
 
-  <div class="info">
+  <div class="mt-8 p-4 bg-gray-50 rounded-lg text-gray-600 text-sm" id="pageInfo">
     <p>Upload multiple images and they will be framed with a white border of 200px on all sides, resulting in a final size of 3840x2160 pixels. All processed images will be available for download.</p>
   </div>
 
-  <div class="processing-spinner" id="processingSpinner"></div>
+  <%= partial :spinner %>
 
-  <div class="preview-grid" id="previewGrid"></div>
+  <%= partial :preview_grid %>
 
-  <div class="preview-actions" id="previewActions">
-    <button class="submit-button" id="exportBtn" disabled>Export Selected</button>
-    <button class="reset-button" id="resetButton">Start Over</button>
+  <div class="hidden mt-8 flex justify-center gap-4" id="previewActions">
+    <button class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" id="exportBtn" disabled>Export Selected</button>
+    <button class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors duration-200" id="resetBtn">Start Over</button>
   </div>
 
-  <div class="success-screen" id="successScreen">
-    <h2>Images Exported Successfully! 🎉</h2>
-    <div class="success-details">
-      <p><span id="processedCount">0</span> images have been exported</p>
-      <p>Processing time: <span id="processingTime">0</span> seconds</p>
+  <div class="hidden mt-8 p-8 bg-green-50 border border-green-200 rounded-lg text-center" id="successScreen">
+    <h2 class="text-2xl font-bold text-green-600 mb-4">Images Exported Successfully! 🎉</h2>
+    <div class="text-gray-600 space-y-2">
+      <p><span id="processedCount" class="font-medium">0</span> images have been exported</p>
+      <p>Processing time: <span id="processingTime" class="font-medium">0</span> seconds</p>
     </div>
-    <div class="action-buttons">
-      <a href="#" class="download-link" id="downloadLink">Download Framed Images</a>
-      <button class="reset-button" id="newExportButton">Export More</button>
+    <div class="mt-8 flex justify-center gap-4">
+      <a href="#" class="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors duration-200" id="downloadLink">Download Framed Images</a>
+      <button class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors duration-200" id="startOverBtn">Start Over</button>
     </div>
   </div>
 
@@ -374,10 +58,10 @@
       const successScreen = document.getElementById('successScreen');
       
       fileListUl.innerHTML = '';
-      successScreen.classList.remove('show');
+      successScreen.classList.add('hidden');
       
       if (input.files.length > 0) {
-        fileList.style.display = 'block';
+        fileList.classList.remove('hidden');
         fileCount.textContent = `${input.files.length} file(s) selected`;
         
         Array.from(input.files).forEach(file => {
@@ -388,15 +72,17 @@
         
         submitBtn.disabled = false;
       } else {
-        fileList.style.display = 'none';
+        fileList.classList.add('hidden');
         submitBtn.disabled = true;
       }
     }
 
     function resetForm() {
       // Show upload form and info
-      document.querySelector('.upload-container').style.display = 'block';
-      document.querySelector('.info').style.display = 'block';
+      const uploadContainer = document.querySelector('.bg-white');
+      const info = document.querySelector('.bg-gray-50');
+      uploadContainer.classList.remove('hidden');
+      info.classList.remove('hidden');
       
       // Clear file input and selections
       document.getElementById('images').value = '';
@@ -404,8 +90,8 @@
       previewGravitySettings.clear();
       
       // Hide file list and success screen
-      document.getElementById('fileList').style.display = 'none';
-      document.getElementById('successScreen').classList.remove('show');
+      document.getElementById('fileList').classList.add('hidden');
+      document.getElementById('successScreen').classList.add('hidden');
       
       // Reset file count
       document.getElementById('fileCount').textContent = '';
@@ -416,43 +102,60 @@
       // Clear selected files list
       document.getElementById('fileListUl').innerHTML = '';
       
-      // Clear preview grid
+      // Clear preview grid and hide actions
       document.getElementById('previewGrid').innerHTML = '';
-      document.getElementById('previewGrid').classList.remove('show');
-      document.getElementById('previewActions').classList.remove('show');
+      document.getElementById('previewGrid').classList.add('hidden');
+      document.getElementById('previewActions').classList.add('hidden');
     }
 
     function createPreviewItem(preview) {
       const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
+      previewItem.className = 'relative bg-white rounded-lg shadow-sm p-6 border-2 border-gray-200 transition-all duration-200 hover:shadow-lg hover:border-gray-300 cursor-pointer';
       previewItem.dataset.id = preview.id;
       
+      // Initialize selection state if preview was previously selected
+      if (selectedPreviews.has(preview.id)) {
+        previewItem.classList.add('border-blue-500');
+      }
+      
       previewItem.innerHTML = `
-        <img src="${preview.url}" alt="${preview.filename}">
-        <div class="preview-info">
-          <div class="filename">${preview.filename}</div>
-          <div class="gravity-control">
-            <label>Position:</label>
-            <select onchange="handleGravityChange(this, '${preview.id}')">
+        <img src="${preview.url}" alt="${preview.filename}" class="w-full h-auto rounded transition-transform duration-200 hover:scale-[1.02]">
+        <div class="mt-4 space-y-4">
+          <div class="text-gray-700 font-medium">${preview.filename}</div>
+          <div class="space-y-2">
+            <label class="block font-medium text-gray-700">Position:</label>
+            <select class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleGravityChange(this, '${preview.id}')">
               <option value="center" ${preview.gravity === 'center' ? 'selected' : ''}>Center</option>
-              <option value="top" ${preview.gravity === 'top' ? 'selected' : ''}>Top</option>
-              <option value="bottom" ${preview.gravity === 'bottom' ? 'selected' : ''}>Bottom</option>
+              <option value="north" ${preview.gravity === 'north' ? 'selected' : ''}>Top</option>
+              <option value="south" ${preview.gravity === 'south' ? 'selected' : ''}>Bottom</option>
+              <option value="west" ${preview.gravity === 'west' ? 'selected' : ''}>Left</option>
+              <option value="east" ${preview.gravity === 'east' ? 'selected' : ''}>Right</option>
+              <option value="northwest" ${preview.gravity === 'northwest' ? 'selected' : ''}>Top Left</option>
+              <option value="northeast" ${preview.gravity === 'northeast' ? 'selected' : ''}>Top Right</option>
+              <option value="southwest" ${preview.gravity === 'southwest' ? 'selected' : ''}>Bottom Left</option>
+              <option value="southeast" ${preview.gravity === 'southeast' ? 'selected' : ''}>Bottom Right</option>
             </select>
           </div>
         </div>
-        <div class="loading">
-          <div class="processing-spinner"></div>
+        <div class="loading-spinner hidden absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+          <div class="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
         </div>
       `;
 
       // Add click handler for selection
-      previewItem.querySelector('img').addEventListener('click', () => {
-        previewItem.classList.toggle('selected');
+      previewItem.addEventListener('click', (e) => {
+        // Don't toggle selection if clicking on select element
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') {
+          return;
+        }
+        
         const id = preview.id;
         if (selectedPreviews.has(id)) {
           selectedPreviews.delete(id);
+          previewItem.classList.remove('border-blue-500');
         } else {
           selectedPreviews.add(id);
+          previewItem.classList.add('border-blue-500');
         }
         updateExportButton();
       });
@@ -464,13 +167,13 @@
     }
 
     async function handleGravityChange(select, previewId) {
-      const previewItem = select.closest('.preview-item');
-      const loading = previewItem.querySelector('.loading');
+      const previewItem = select.closest('.relative');
+      const loading = previewItem.querySelector('.loading-spinner');
       const gravity = select.value;
       const previousValue = previewGravitySettings.get(previewId);
 
       try {
-        loading.classList.add('show');
+        loading.classList.remove('hidden');
         const response = await fetch('/reprocess', {
           method: 'POST',
           headers: { 
@@ -499,7 +202,7 @@
         select.value = previousValue;
         alert('Failed to change image position. Please try again.');
       } finally {
-        loading.classList.remove('show');
+        loading.classList.add('hidden');
       }
     }
 
@@ -509,16 +212,11 @@
       exportBtn.textContent = `Export ${selectedPreviews.size} ${selectedPreviews.size === 1 ? 'Image' : 'Images'}`;
     }
 
-    // Add click handler for reset button
-    document.getElementById('resetButton').addEventListener('click', function(e) {
-      e.preventDefault();
-      resetForm();
-    });
 
-    // Export button handler
+
     // Form submission handler
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+      e.preventDefault(); // Prevent normal form submission
       const spinner = document.getElementById('processingSpinner');
       const submitBtn = document.getElementById('submitBtn');
       const originalButtonText = submitBtn.textContent;
@@ -526,16 +224,21 @@
       try {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Processing...';
-        spinner.style.display = 'block';
+        spinner.classList.remove('hidden');
         
+        const formData = new FormData(this);
         const response = await fetch('/preview', {
           method: 'POST',
-          body: new FormData(this)
+          body: formData
         });
         
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.error || 'Failed to process images');
+        }
+
+        if (!data.previews || !Array.isArray(data.previews)) {
+          throw new Error('Invalid response format');
         }
         
         // Clear the form and file list
@@ -543,20 +246,22 @@
         updateFileList();
         
         // Hide upload form and info
-        document.querySelector('.upload-container').style.display = 'none';
-        document.querySelector('.info').style.display = 'none';
+        const uploadContainer = document.querySelector('.bg-white');
+        const info = document.getElementById('pageInfo');
+        uploadContainer.classList.add('hidden');
+        info.classList.add('hidden');
         
         // Show previews
         const previewGrid = document.getElementById('previewGrid');
         previewGrid.innerHTML = '';
-        previewGrid.classList.add('show');
+        previewGrid.classList.remove('hidden');
         
         data.previews.forEach(preview => {
           previewGrid.appendChild(createPreviewItem(preview));
         });
         
         // Show preview actions
-        document.getElementById('previewActions').classList.add('show');
+        document.getElementById('previewActions').classList.remove('hidden');
         updateExportButton();
         
       } catch (error) {
@@ -564,9 +269,13 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = originalButtonText;
-        spinner.style.display = 'none';
+        spinner.classList.add('hidden');
       }
     });
+
+    // Add event listeners for reset buttons
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+    document.getElementById('startOverBtn').addEventListener('click', resetForm);
 
     // Export button handler
     document.getElementById('exportBtn').addEventListener('click', async function(e) {
@@ -578,7 +287,7 @@
       
       try {
         // Show spinner and disable button
-        spinner.style.display = 'block';
+        spinner.classList.remove('hidden');
         exportBtn.disabled = true;
         exportBtn.textContent = 'Exporting...';
         
@@ -608,32 +317,27 @@
         document.getElementById('downloadLink').download = data.filename;
         
         // Hide preview grid and show success screen
-        document.getElementById('previewGrid').classList.remove('show');
-        document.getElementById('previewActions').classList.remove('show');
-        document.getElementById('successScreen').classList.add('show');
+        document.getElementById('previewGrid').classList.add('hidden');
+        document.getElementById('previewActions').classList.add('hidden');
+        document.getElementById('successScreen').classList.remove('hidden');
         
       } catch (error) {
         alert(error.message);
       } finally {
-        spinner.style.display = 'none';
+        spinner.classList.add('hidden');
         exportBtn.disabled = selectedPreviews.size === 0;
         exportBtn.textContent = originalButtonText;
       }
     });
 
     // Download link handler - direct download using native browser download
-    document.getElementById('downloadLink').addEventListener('click', function(e) {
-      // Let the native download attribute handle it
-      return true;
-    });
-
-    // New export button handler
-    document.getElementById('newExportButton').addEventListener('click', function(e) {
-      e.preventDefault();
-      document.getElementById('successScreen').classList.remove('show');
-      document.getElementById('previewGrid').classList.add('show');
-      document.getElementById('previewActions').classList.add('show');
-    });
+    const downloadLink = document.getElementById('downloadLink');
+    if (downloadLink) {
+      downloadLink.addEventListener('click', function(e) {
+        // Let the native download attribute handle it
+        // No need to return anything or prevent default
+      });
+    }
   </script>
 </body>
 </html>
