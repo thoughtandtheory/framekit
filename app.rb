@@ -242,10 +242,16 @@ helpers do
     temp_file = Tempfile.new(['framed_double', '.jpg'])
     
     begin
-      # Process left and right images separately first
-      left_width = 1720  # (3440 - 200) / 2
-      right_width = 1720
-      height = 1960      # 2160 - 200
+      # Calculate dimensions
+      # Total width: 3840px
+      # Total height: 2160px
+      # Border: 200px on all sides and between images
+      # Available width for images: 3840 - (200 * 3) = 3240px
+      # Each image width: 3240 / 2 = 1620px
+      # Available height: 2160 - (200 * 2) = 1760px
+      
+      left_width = right_width = 1620  # (3840 - (200 * 3)) / 2
+      height = 1760                    # 2160 - (200 * 2)
       
       left_temp, _ = process_image(left_file, left_filename, left_gravity, left_width, height, true)
       right_temp, _ = process_image(right_file, right_filename, right_gravity, right_width, height, true)
@@ -256,11 +262,11 @@ helpers do
         convert.size('3840x2160')
         convert.xc('white')
         
-        # Place left image
-        convert.draw("image over #{100},100 0,0 '#{left_temp.path}'")
+        # Place left image (200px from left edge)
+        convert.draw("image over #{200},200 0,0 '#{left_temp.path}'")
         
         # Place right image (200px from left image)
-        convert.draw("image over #{100 + left_width + 200},100 0,0 '#{right_temp.path}'")
+        convert.draw("image over #{200 + left_width + 200},200 0,0 '#{right_temp.path}'")
         
         # Optimize output
         convert.colorspace('sRGB')
