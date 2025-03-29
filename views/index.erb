@@ -8,7 +8,7 @@
     <form class="flex flex-col gap-6" id="uploadForm">
       <div class="flex flex-col gap-2">
         <label for="images" class="font-medium text-gray-700">Choose images to frame</label>
-        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updateFileList()">
+        <input type="file" name="images[]" id="images" accept="image/*" required multiple class="block p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updateFileList()">
       </div>
 
       <%= partial :file_list %>
